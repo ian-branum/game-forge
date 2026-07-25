@@ -50,7 +50,7 @@ Output ONLY valid JSON, no markdown, no explanation. Schema:
 {
   "title": string,
   "subtitle": string,
-  "briefing": string (2-3 paragraphs of flavor text),
+  "briefing": string (2 short paragraphs max, keep under 100 words total),
   "zones": [
     { "name": "north", "terrain": "woods", "features": [], "objective": null },
     { "name": "center", "terrain": "building", "features": ["road_ew"], "objective": "Village Center" },
@@ -134,7 +134,7 @@ export async function generateTacticalScenario(prompt: string): Promise<Scenario
       ],
       response_format: { type: "json_object" },
       temperature: 0.8,
-      max_tokens: 2000,
+      max_tokens: 4096,
     }),
   });
 
