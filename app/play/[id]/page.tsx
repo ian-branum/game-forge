@@ -7,6 +7,7 @@ import WordGame from "@/components/WordGame";
 import PuzzleGame from "@/components/PuzzleGame";
 import CardGame from "@/components/CardGame";
 import NarrativeGame from "@/components/NarrativeGame";
+import OthelloGame from "@/components/OthelloGame";
 import type { ScenarioDefinition } from "@/lib/squad-leader/types";
 import type { TriviaScenario } from "@/lib/generators/trivia";
 import type { WordPuzzle } from "@/lib/generators/word";
@@ -17,9 +18,8 @@ import type { NarrativeScenario } from "@/lib/generators/narrative";
 export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (id === "normandy-demo") {
-    return <TacticalGame scenario={normandyScenario} />;
-  }
+  if (id === "normandy-demo") return <TacticalGame scenario={normandyScenario} />;
+  if (id === "othello-demo")  return <OthelloGame />;
 
   const row = await prisma.scenario.findUnique({ where: { id } });
   if (!row) return notFound();

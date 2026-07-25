@@ -15,6 +15,16 @@ const GAME_TYPES = [
     available: true,
   },
   {
+    id: "othello-classic",
+    emoji: "⬛",
+    label: "Classic Games",
+    color: "#94a3b8",
+    desc: "Timeless strategy games playable instantly — no AI generation needed. Othello (Reversi) is live now, with more classic games on the way. Play against a minimax AI that knows what it's doing.",
+    demo: "/play/othello-demo",
+    demoLabel: "Play Othello",
+    available: true,
+  },
+  {
     id: "trivia",
     emoji: "🧠",
     label: "Trivia",

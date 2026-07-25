@@ -60,8 +60,12 @@ export default function ForgePage() {
           <h1 className="font-orbitron font-black text-3xl tracking-widest text-white mb-2">
             FORGE A GAME
           </h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 text-sm mb-2">
             Describe any scenario. AI builds a unique game just for you.
+          </p>
+          <p className="text-gray-700 text-xs">
+            💡 This generates <em>new</em> games from your prompt — not classic games like Chess or Othello.
+            For those, try the <a href="/play/othello-demo" className="underline hover:text-gray-500">demo games</a>.
           </p>
         </div>
 
