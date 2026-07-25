@@ -1,18 +1,29 @@
 "use client";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-const GAME_TYPES = [
+interface DemoOption { label: string; url: string; }
+
+interface GameType {
+  id: string;
+  emoji: string;
+  label: string;
+  color: string;
+  desc: string;
+  demos: DemoOption[];
+}
+
+const GAME_TYPES: GameType[] = [
   {
     id: "tactical",
     emoji: "⚔️",
     label: "Tactical",
     color: "#4488ff",
     desc: "Hex-based squad combat on procedurally generated battlefields. Command infantry, machine guns, and leaders across terrain that actually matters — woods give cover, roads speed movement, buildings anchor defenses.",
-    demo: "/play/normandy-demo",
-    demoLabel: "Normandy, 1944",
-    available: true,
+    demos: [
+      { label: "Normandy, 1944", url: "/play/normandy-demo" },
+    ],
   },
   {
     id: "othello-classic",
@@ -20,9 +31,9 @@ const GAME_TYPES = [
     label: "Classic Games",
     color: "#94a3b8",
     desc: "Timeless strategy games playable instantly — no AI generation needed. Othello (Reversi) is live now, with more classic games on the way. Play against a minimax AI that knows what it's doing.",
-    demo: "/play/othello-demo",
-    demoLabel: "Play Othello",
-    available: true,
+    demos: [
+      { label: "Othello (Reversi)", url: "/play/othello-demo" },
+    ],
   },
   {
     id: "trivia",
@@ -30,9 +41,7 @@ const GAME_TYPES = [
     label: "Trivia",
     color: "#a855f7",
     desc: "AI-generated quiz battles on any topic imaginable. From ancient Rome to quantum physics to 90s hip-hop — describe your subject and get a custom 8-question gauntlet with escalating difficulty.",
-    demo: null,
-    demoLabel: "Sign in to play",
-    available: false,
+    demos: [],
   },
   {
     id: "word",
@@ -40,9 +49,7 @@ const GAME_TYPES = [
     label: "Word",
     color: "#22c55e",
     desc: "Word search puzzles built around any theme you choose. The AI picks the words, writes the clues, and hides them in a 12×12 grid — every puzzle genuinely themed to your subject.",
-    demo: null,
-    demoLabel: "Sign in to play",
-    available: false,
+    demos: [],
   },
   {
     id: "puzzle",
@@ -50,9 +57,7 @@ const GAME_TYPES = [
     label: "Puzzle",
     color: "#f59e0b",
     desc: "Logic grid deduction puzzles with AI-crafted clues. Given 3 categories and 6 clues, deduce which items match. Themed to any topic — detectives, space missions, historical figures.",
-    demo: null,
-    demoLabel: "Sign in to play",
-    available: false,
+    demos: [],
   },
   {
     id: "card",
@@ -60,9 +65,7 @@ const GAME_TYPES = [
     label: "Card",
     color: "#ef4444",
     desc: "Thematic solitaire card games — Klondike, FreeCell, or Pyramid — dressed up in any setting you describe. The AI picks the variant that fits your theme and gives it flavour.",
-    demo: null,
-    demoLabel: "Sign in to play",
-    available: false,
+    demos: [],
   },
   {
     id: "narrative",
@@ -70,11 +73,58 @@ const GAME_TYPES = [
     label: "Adventure",
     color: "#f97316",
     desc: "Branching text adventures with meaningful choices. Describe your world and setting — the AI builds a 9-scene story tree with victory, defeat, and neutral endings. Every path is different.",
-    demo: null,
-    demoLabel: "Sign in to play",
-    available: false,
+    demos: [],
   },
 ];
+
+function DemoButton({ gt }: { gt: GameType }) {
+  const [open, setOpen] = useState(false);
+
+  if (gt.demos.length === 0) {
+    return (
+      <div className="text-center py-2 rounded-lg font-orbitron text-xs tracking-widest"
+        style={{ background: "#ffffff08", border: "1px solid #ffffff11", color: "#555" }}>
+        Sign in to play
+      </div>
+    );
+  }
+
+  if (gt.demos.length === 1) {
+    return (
+      <a href={gt.demos[0].url}
+        className="block text-center py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest transition hover:scale-105"
+        style={{ background: `${gt.color}22`, border: `1px solid ${gt.color}66`, color: gt.color }}>
+        ▶ Try Demo · {gt.demos[0].label}
+      </a>
+    );
+  }
+
+  // Multiple demos — dropdown
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full text-center py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest transition hover:scale-105 flex items-center justify-center gap-2"
+        style={{ background: `${gt.color}22`, border: `1px solid ${gt.color}66`, color: gt.color }}>
+        ▶ Try a Demo
+        <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="absolute bottom-full mb-1 left-0 right-0 rounded-lg overflow-hidden z-20"
+          style={{ background: "#0a0f2e", border: `1px solid ${gt.color}44`, boxShadow: "0 -4px 20px rgba(0,0,0,0.5)" }}>
+          {gt.demos.map(d => (
+            <a key={d.url} href={d.url}
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2 text-xs transition hover:opacity-80"
+              style={{ color: gt.color, borderBottom: `1px solid ${gt.color}22` }}>
+              ▶ {d.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -188,18 +238,7 @@ export default function LandingPage() {
                 <p className="text-gray-400 text-xs leading-relaxed flex-1 mb-4">
                   {gt.desc}
                 </p>
-                {gt.available ? (
-                  <a href={gt.demo!}
-                    className="text-center py-2 rounded-lg font-orbitron font-bold text-xs tracking-widest transition hover:scale-105"
-                    style={{ background: `${gt.color}22`, border: `1px solid ${gt.color}66`, color: gt.color }}>
-                    ▶ Try Demo · {gt.demoLabel}
-                  </a>
-                ) : (
-                  <div className="text-center py-2 rounded-lg font-orbitron text-xs tracking-widest"
-                    style={{ background: "#ffffff08", border: "1px solid #ffffff11", color: "#555" }}>
-                    {gt.demoLabel}
-                  </div>
-                )}
+                <DemoButton gt={gt} />
               </div>
             ))}
           </div>
