@@ -116,6 +116,10 @@ function buildMapFromZones(zones: ZoneDescriptor[]): Tile[][] {
 }
 
 export async function generateTacticalScenario(prompt: string): Promise<ScenarioDefinition> {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    throw new Error("DEEPSEEK_API_KEY is not set in environment variables");
+  }
+
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
@@ -135,11 +139,22 @@ export async function generateTacticalScenario(prompt: string): Promise<Scenario
   });
 
   if (!response.ok) {
-    throw new Error(`DeepSeek API error: ${response.status}`);
+    const errBody = await response.text().catch(() => "(unreadable)");
+    throw new Error(`DeepSeek API error ${response.status}: ${errBody}`);
   }
 
   const data = await response.json();
-  const raw: AIScenarioOutput = JSON.parse(data.choices[0].message.content);
+  const rawContent = data.choices?.[0]?.message?.content;
+  if (!rawContent) {
+    throw new Error(`DeepSeek returned no content. Full response: ${JSON.stringify(data)}`);
+  }
+
+  let raw: AIScenarioOutput;
+  try {
+    raw = JSON.parse(rawContent);
+  } catch (e) {
+    throw new Error(`Failed to parse DeepSeek JSON response: ${e}. Raw content: ${rawContent.slice(0, 500)}`);
+  }
 
   const map = buildMapFromZones(raw.zones ?? []);
 

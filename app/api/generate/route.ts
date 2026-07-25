@@ -37,8 +37,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Category '${category}' not yet implemented` }, { status: 400 });
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "AI generation failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[/api/generate] Generation failed:", msg, stack);
+    return NextResponse.json({ error: msg, stack, category, prompt }, { status: 500 });
   }
 
   // Deduct credits + save scenario atomically

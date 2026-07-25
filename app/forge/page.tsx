@@ -20,7 +20,7 @@ export default function ForgePage() {
   const [prompt, setPrompt] = useState("");
   const [category, setCategory] = useState<CategoryId>("tactical");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
 
   const selectedCategory = CATEGORIES.find(c => c.id === category)!;
 
@@ -28,7 +28,7 @@ export default function ForgePage() {
     if (!prompt.trim()) return;
     if (!session) { signIn(); return; }
     setLoading(true);
-    setError("");
+    setError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -36,10 +36,17 @@ export default function ForgePage() {
         body: JSON.stringify({ prompt, category }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Generation failed"); setLoading(false); return; }
+      if (!res.ok) {
+        setError({
+          message: `HTTP ${res.status}: ${data.error ?? "Unknown error"}`,
+          detail: data.stack ?? JSON.stringify(data, null, 2),
+        });
+        setLoading(false);
+        return;
+      }
       router.push(`/play/${data.id}`);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (e) {
+      setError({ message: `Network error: ${e instanceof Error ? e.message : String(e)}` });
       setLoading(false);
     }
   }
@@ -97,7 +104,16 @@ export default function ForgePage() {
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && e.metaKey) handleGenerate(); }}
           />
-          {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+          {error && (
+            <div className="mt-3 rounded-lg border border-red-900 bg-red-950/40 p-3">
+              <p className="text-red-400 text-sm font-bold mb-1">{error.message}</p>
+              {error.detail && (
+                <pre className="text-red-600 text-xs overflow-x-auto whitespace-pre-wrap break-all mt-1 max-h-48 overflow-y-auto">
+                  {error.detail}
+                </pre>
+              )}
+            </div>
+          )}
           <button
             onClick={handleGenerate}
             disabled={loading || !prompt.trim() || !selectedCategory.available}
