@@ -5,11 +5,11 @@ import { useSession, signIn } from "next-auth/react";
 
 const CATEGORIES = [
   { id: "tactical",  label: "Tactical",   emoji: "⚔️",  desc: "Hex-based squad combat",       available: true },
-  { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Quiz on any topic",             available: false },
-  { id: "word",      label: "Word",        emoji: "📝",  desc: "Crosswords & word puzzles",     available: false },
-  { id: "puzzle",    label: "Puzzle",      emoji: "🧩",  desc: "Logic & grid puzzles",          available: false },
-  { id: "card",      label: "Card",        emoji: "🃏",  desc: "Solitaire & card games",        available: false },
-  { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Text adventure & RPG",          available: false },
+  { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Quiz on any topic",             available: true },
+  { id: "word",      label: "Word",        emoji: "📝",  desc: "Word search puzzles",           available: true },
+  { id: "puzzle",    label: "Puzzle",      emoji: "🧩",  desc: "Logic grid puzzles",            available: true },
+  { id: "card",      label: "Card",        emoji: "🃏",  desc: "Solitaire card games",          available: true },
+  { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: true },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]["id"];

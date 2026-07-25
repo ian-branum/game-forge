@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { generateTacticalScenario } from "@/lib/generators/tactical";
+import { generateTriviaScenario } from "@/lib/generators/trivia";
+import { generateWordPuzzle } from "@/lib/generators/word";
+import { generateLogicPuzzle } from "@/lib/generators/puzzle";
+import { generateCardScenario } from "@/lib/generators/card";
+import { generateNarrativeScenario } from "@/lib/generators/narrative";
 
 const GENERATION_COSTS: Record<string, number> = {
   tactical:  3,
@@ -31,10 +36,15 @@ export async function POST(req: NextRequest) {
 
   let payload: unknown;
   try {
-    if (category === "tactical") {
-      payload = await generateTacticalScenario(prompt);
-    } else {
-      return NextResponse.json({ error: `Category '${category}' not yet implemented` }, { status: 400 });
+    switch (category) {
+      case "tactical":  payload = await generateTacticalScenario(prompt); break;
+      case "trivia":    payload = await generateTriviaScenario(prompt); break;
+      case "word":      payload = await generateWordPuzzle(prompt); break;
+      case "puzzle":    payload = await generateLogicPuzzle(prompt); break;
+      case "card":      payload = await generateCardScenario(prompt); break;
+      case "narrative": payload = await generateNarrativeScenario(prompt); break;
+      default:
+        return NextResponse.json({ error: `Unknown category: ${category}` }, { status: 400 });
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -43,7 +53,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg, stack, category, prompt }, { status: 500 });
   }
 
-  // Deduct credits + save scenario atomically
   const [scenario] = await prisma.$transaction([
     prisma.scenario.create({
       data: {
