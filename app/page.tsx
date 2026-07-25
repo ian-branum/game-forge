@@ -41,7 +41,9 @@ const GAME_TYPES: GameType[] = [
     label: "Trivia",
     color: "#a855f7",
     desc: "AI-generated quiz battles on any topic imaginable. From ancient Rome to quantum physics to 90s hip-hop — describe your subject and get a custom 8-question gauntlet with escalating difficulty.",
-    demos: [],
+    demos: [
+      { label: "Space Exploration Quiz", url: "/play/trivia-demo" },
+    ],
   },
   {
     id: "word",
@@ -49,7 +51,9 @@ const GAME_TYPES: GameType[] = [
     label: "Word",
     color: "#22c55e",
     desc: "Word search puzzles built around any theme you choose. The AI picks the words, writes the clues, and hides them in a 12×12 grid — every puzzle genuinely themed to your subject.",
-    demos: [],
+    demos: [
+      { label: "Ocean Life Word Search", url: "/play/word-demo" },
+    ],
   },
   {
     id: "puzzle",
@@ -57,7 +61,9 @@ const GAME_TYPES: GameType[] = [
     label: "Puzzle",
     color: "#f59e0b",
     desc: "Logic grid deduction puzzles with AI-crafted clues. Given 3 categories and 6 clues, deduce which items match. Themed to any topic — detectives, space missions, historical figures.",
-    demos: [],
+    demos: [
+      { label: "The Detective's Casebook", url: "/play/puzzle-demo" },
+    ],
   },
   {
     id: "card",
@@ -65,7 +71,9 @@ const GAME_TYPES: GameType[] = [
     label: "Card",
     color: "#ef4444",
     desc: "Thematic solitaire card games — Klondike, FreeCell, or Pyramid — dressed up in any setting you describe. The AI picks the variant that fits your theme and gives it flavour.",
-    demos: [],
+    demos: [
+      { label: "The Pirate's Solitaire", url: "/play/card-demo" },
+    ],
   },
   {
     id: "narrative",
@@ -73,7 +81,9 @@ const GAME_TYPES: GameType[] = [
     label: "Adventure",
     color: "#f97316",
     desc: "Branching text adventures with meaningful choices. Describe your world and setting — the AI builds a 9-scene story tree with victory, defeat, and neutral endings. Every path is different.",
-    demos: [],
+    demos: [
+      { label: "The Last Transmission", url: "/play/narrative-demo" },
+    ],
   },
 ];
 

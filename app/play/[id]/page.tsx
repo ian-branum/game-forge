@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { normandyScenario } from "@/lib/squad-leader/scenarios/normandy";
+import { triviaDemo } from "@/lib/demos/trivia-demo";
+import { wordDemo } from "@/lib/demos/word-demo";
+import { puzzleDemo } from "@/lib/demos/puzzle-demo";
+import { cardDemo } from "@/lib/demos/card-demo";
+import { narrativeDemo } from "@/lib/demos/narrative-demo";
 import TacticalGame from "@/components/TacticalGame";
 import TriviaGame from "@/components/TriviaGame";
 import WordGame from "@/components/WordGame";
@@ -20,6 +25,11 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
 
   if (id === "normandy-demo") return <TacticalGame scenario={normandyScenario} />;
   if (id === "othello-demo")  return <OthelloGame />;
+  if (id === "trivia-demo")   return <TriviaGame scenario={triviaDemo} />;
+  if (id === "word-demo")     return <WordGame scenario={wordDemo} />;
+  if (id === "puzzle-demo")   return <PuzzleGame scenario={puzzleDemo} />;
+  if (id === "card-demo")     return <CardGame scenario={cardDemo} />;
+  if (id === "narrative-demo") return <NarrativeGame scenario={narrativeDemo} />;
 
   const row = await prisma.scenario.findUnique({ where: { id } });
   if (!row) return notFound();
