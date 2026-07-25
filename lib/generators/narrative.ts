@@ -68,7 +68,7 @@ export async function generateNarrativeScenario(prompt: string): Promise<Narrati
       ],
       response_format: { type: "json_object" },
       temperature: 0.8,
-      max_tokens: 4096,
+      max_tokens: 8192,
     }),
   });
 
