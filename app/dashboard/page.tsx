@@ -15,6 +15,7 @@ const CATEGORY_META: Record<string, { emoji: string; color: string; label: strin
 
 interface ScenarioSummary {
   id: string;
+  userId: string;
   title: string;
   category: string;
   prompt: string;
@@ -27,6 +28,10 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [selected, setSelected] = useState<ScenarioSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [filterMine, setFilterMine] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [archiving, setArchiving] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/");
@@ -34,11 +39,31 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/scenarios")
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (filterMine) params.set("mine", "true");
+    if (filterCategory !== "all") params.set("category", filterCategory);
+    fetch(`/api/scenarios?${params}`)
       .then(r => r.json())
-      .then(data => { setScenarios(data.scenarios ?? []); setLoading(false); })
+      .then(data => {
+        setScenarios(data.scenarios ?? []);
+        setCurrentUserId(data.currentUserId ?? "");
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
-  }, [status]);
+  }, [status, filterMine, filterCategory]);
+
+  const handleArchive = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setArchiving(id);
+    try {
+      await fetch(`/api/scenarios/${id}/archive`, { method: "PATCH" });
+      setScenarios(prev => prev.filter(s => s.id !== id));
+      if (selected?.id === id) setSelected(null);
+    } finally {
+      setArchiving(null);
+    }
+  };
 
   if (status === "loading" || status === "unauthenticated") {
     return (
@@ -54,7 +79,7 @@ export default function DashboardPage() {
     <div className="flex" style={{ height: "calc(100vh - 56px)" }}>
 
       {/* ── Left nav ─────────────────────────────────────────────────────── */}
-      <div className="w-64 flex-shrink-0 flex flex-col border-r overflow-y-auto"
+      <div className="w-64 flex-shrink-0 flex flex-col border-r"
         style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
 
         {/* New Game button */}
@@ -76,8 +101,43 @@ export default function DashboardPage() {
         </div>
 
         {/* History header */}
-        <div className="px-3 py-2">
+        <div className="px-3 pt-3 pb-1">
           <span className="text-gray-600 text-xs font-orbitron tracking-widest">PAST GAMES</span>
+        </div>
+
+        {/* Filters */}
+        <div className="px-3 pb-2 flex flex-col gap-2 border-b" style={{ borderColor: "#1e2a4a" }}>
+          {/* My Games toggle */}
+          <button
+            onClick={() => setFilterMine(v => !v)}
+            className="w-full text-left px-3 py-2 font-orbitron text-xs tracking-widest transition rounded-lg"
+            style={{
+              border: `1px solid ${filterMine ? "#4488ff66" : "#1e2a4a"}`,
+              background: filterMine ? "#4488ff11" : "transparent",
+              color: filterMine ? "#4488ff" : "#6b7280",
+            }}>
+            {filterMine ? "👤 MY GAMES" : "🌐 ALL GAMES"}
+          </button>
+
+          {/* Category selector */}
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            className="w-full font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer"
+            style={{
+              background: "#0a1128",
+              border: "1px solid #1e2a4a",
+              color: "#9ca3af",
+              outline: "none",
+            }}>
+            <option value="all">ALL TYPES</option>
+            <option value="tactical">⚔️ Tactical</option>
+            <option value="trivia">🧠 Trivia</option>
+            <option value="word">📝 Word</option>
+            <option value="puzzle">🧩 Puzzle</option>
+            <option value="card">🃏 Card</option>
+            <option value="narrative">📖 Adventure</option>
+          </select>
         </div>
 
         {/* Game list */}
@@ -95,6 +155,7 @@ export default function DashboardPage() {
             {scenarios.map(s => {
               const m = CATEGORY_META[s.category] ?? CATEGORY_META.tactical;
               const isSelected = selected?.id === s.id;
+              const isOwner = s.userId === currentUserId;
               return (
                 <button
                   key={s.id}
@@ -106,10 +167,28 @@ export default function DashboardPage() {
                     borderLeft: isSelected ? `3px solid ${m.color}` : "3px solid transparent",
                   }}>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm">{m.emoji}</span>
-                    <span className="font-orbitron text-xs font-bold truncate" style={{ color: isSelected ? m.color : "#9ca3af" }}>
+                    <span className="text-sm flex-shrink-0">{m.emoji}</span>
+                    <span className="font-orbitron text-xs font-bold truncate flex-1" style={{ color: isSelected ? m.color : "#9ca3af" }}>
                       {s.title}
                     </span>
+                    {isOwner && (
+                      <button
+                        onClick={e => handleArchive(e, s.id)}
+                        disabled={archiving === s.id}
+                        title="Archive game"
+                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded transition"
+                        style={{
+                          color: "#ef4444",
+                          border: "1px solid #ef444422",
+                          background: "transparent",
+                          opacity: archiving === s.id ? 0.3 : 0.4,
+                          cursor: archiving === s.id ? "not-allowed" : "pointer",
+                        }}
+                        onMouseEnter={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                        onMouseLeave={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
+                        {archiving === s.id ? "…" : "🗄"}
+                      </button>
+                    )}
                   </div>
                   <div className="text-gray-600 text-xs pl-6 truncate">{s.prompt}</div>
                   <div className="text-gray-700 text-xs pl-6 mt-0.5">
@@ -151,7 +230,7 @@ export default function DashboardPage() {
             {/* Scenario brief */}
             <div className="px-8 py-6 border-b" style={{ borderColor: "#1e2a4a" }}>
               <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>YOUR PROMPT</div>
-              <p className="text-gray-300 text-sm leading-relaxed italic">"{selected.prompt}"</p>
+              <p className="text-gray-300 text-sm leading-relaxed italic">&ldquo;{selected.prompt}&rdquo;</p>
             </div>
 
             {/* Share */}
