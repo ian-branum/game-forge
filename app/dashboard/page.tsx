@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<ScenarioSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [filterMine, setFilterMine] = useState(false);
+  const [filterView, setFilterView] = useState<"all" | "mine" | "archived">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [archiving, setArchiving] = useState<string | null>(null);
 
@@ -41,7 +41,8 @@ export default function DashboardPage() {
     if (status !== "authenticated") return;
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterMine) params.set("mine", "true");
+    if (filterView === "mine") params.set("mine", "true");
+    if (filterView === "archived") params.set("archived", "true");
     if (filterCategory !== "all") params.set("category", filterCategory);
     fetch(`/api/scenarios?${params}`)
       .then(r => r.json())
@@ -51,7 +52,7 @@ export default function DashboardPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [status, filterMine, filterCategory]);
+  }, [status, filterView, filterCategory]);
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -107,16 +108,16 @@ export default function DashboardPage() {
 
         {/* Filters */}
         <div className="px-3 pb-2 flex flex-col gap-2 border-b" style={{ borderColor: "#1e2a4a" }}>
-          {/* My Games toggle */}
+          {/* View cycle: All → Mine → Archived */}
           <button
-            onClick={() => setFilterMine(v => !v)}
+            onClick={() => setFilterView(v => v === "all" ? "mine" : v === "mine" ? "archived" : "all")}
             className="w-full text-left px-3 py-2 font-orbitron text-xs tracking-widest transition rounded-lg"
             style={{
-              border: `1px solid ${filterMine ? "#4488ff66" : "#1e2a4a"}`,
-              background: filterMine ? "#4488ff11" : "transparent",
-              color: filterMine ? "#4488ff" : "#6b7280",
+              border: `1px solid ${filterView !== "all" ? "#4488ff66" : "#1e2a4a"}`,
+              background: filterView !== "all" ? "#4488ff11" : "transparent",
+              color: filterView === "archived" ? "#f59e0b" : filterView === "mine" ? "#4488ff" : "#6b7280",
             }}>
-            {filterMine ? "👤 MY GAMES" : "🌐 ALL GAMES"}
+            {filterView === "mine" ? "👤 MY GAMES" : filterView === "archived" ? "📦 ARCHIVED" : "🌐 ALL GAMES"}
           </button>
 
           {/* Category selector */}
@@ -148,7 +149,7 @@ export default function DashboardPage() {
         ) : scenarios.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-center">
             <div className="text-3xl">🎮</div>
-            <div className="text-gray-600 text-xs leading-relaxed">No games yet. Forge your first!</div>
+            <div className="text-gray-600 text-xs leading-relaxed">{filterView === "archived" ? "No archived games." : "No games found."}</div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
@@ -257,14 +258,12 @@ export default function DashboardPage() {
               WELCOME{session?.user?.name ? `, ${session.user.name.split(" ")[0].toUpperCase()}` : ""}
             </h2>
             <p className="text-gray-500 text-sm max-w-sm mb-8 leading-relaxed">
-              {scenarios.length > 0
-                ? "Select a game from the left to view details, or forge a new one."
-                : "You haven't forged any games yet. Start with a tactical scenario — describe a battle and the AI builds it."}
+              {"Select a game from the left to view details, or forge a new one."}
             </p>
             <Link href="/forge"
               className="px-8 py-4 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
               style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff", boxShadow: "0 0 30px #4488ff22" }}>
-              ⚡ FORGE YOUR FIRST GAME
+              ⚡ FORGE A GAME
             </Link>
           </div>
         )}

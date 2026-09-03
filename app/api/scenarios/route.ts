@@ -10,12 +10,13 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const mine = searchParams.get("mine") === "true";
+  const archived = searchParams.get("archived") === "true";
   const category = searchParams.get("category"); // null = all
 
   const scenarios = await prisma.scenario.findMany({
     where: {
       ...(mine ? { userId: session.user.id } : {}),
-      archived: false,
+      archived: archived ? true : false,
       ...(category ? { category } : {}),
     },
     orderBy: { createdAt: "desc" },
