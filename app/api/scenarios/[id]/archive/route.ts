@@ -19,7 +19,7 @@ export async function PATCH(
   if (scenario.userId !== session.user.id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.scenario.update({ where: { id }, data: { archived: true } });
+  await prisma.scenario.update({ where: { id }, data: { archived: !scenario.archived } });
 
   return NextResponse.json({ ok: true });
 }

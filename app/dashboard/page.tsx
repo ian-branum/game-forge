@@ -176,18 +176,18 @@ export default function DashboardPage() {
                       <button
                         onClick={e => handleArchive(e, s.id)}
                         disabled={archiving === s.id}
-                        title="Archive game"
+                        title={filterView === "archived" ? "Restore game" : "Archive game"}
                         className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded transition"
                         style={{
-                          color: "#ef4444",
-                          border: "1px solid #ef444422",
+                          color: filterView === "archived" ? "#34d399" : "#ef4444",
+                          border: `1px solid ${filterView === "archived" ? "#34d39922" : "#ef444422"}`,
                           background: "transparent",
                           opacity: archiving === s.id ? 0.3 : 0.4,
                           cursor: archiving === s.id ? "not-allowed" : "pointer",
                         }}
                         onMouseEnter={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
                         onMouseLeave={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
-                        {archiving === s.id ? "…" : "🗄"}
+                        {archiving === s.id ? "…" : filterView === "archived" ? "↩" : "🗄"}
                       </button>
                     )}
                   </div>
