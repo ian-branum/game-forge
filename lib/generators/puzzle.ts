@@ -58,6 +58,7 @@ export async function generateLogicPuzzle(prompt: string): Promise<LogicPuzzle> 
       response_format: { type: "json_object" },
       temperature: 0.6,
       max_tokens: 8192,
+      reasoning_effort: "none",
     }),
   });
 

@@ -54,6 +54,7 @@ export async function generateTriviaScenario(prompt: string): Promise<TriviaScen
       response_format: { type: "json_object" },
       temperature: 0.7,
       max_tokens: 4096,
+      reasoning_effort: "none",
     }),
   });
 
