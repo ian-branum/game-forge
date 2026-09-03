@@ -134,7 +134,8 @@ export async function generateTacticalScenario(prompt: string): Promise<Scenario
       ],
       response_format: { type: "json_object" },
       temperature: 0.8,
-      max_tokens: 4096,
+      max_tokens: 8192,
+      reasoning_effort: "none",
     }),
   });
 
