@@ -46,11 +46,11 @@ export default function DashboardPage() {
   const [modifying, setModifying] = useState(false);
   const [modifyError, setModifyError] = useState("");
 
-  // Pricing saved indicator
+  // Pricing inputs (controlled so they repopulate on game switch)
+  const [priceToPlay, setPriceToPlay] = useState(0);
+  const [priceToClone, setPriceToClone] = useState(0);
   const [pricingSaved, setPricingSaved] = useState(false);
   const pricingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const playPriceRef = useRef<HTMLInputElement | null>(null);
-  const clonePriceRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/");
@@ -79,6 +79,8 @@ export default function DashboardPage() {
 
   const selectScenario = (s: ScenarioSummary) => {
     setSelected(s);
+    setPriceToPlay(s.priceToPlay ?? 0);
+    setPriceToClone(s.priceToClone ?? 0);
     setModifyPrompt("");
     setModifyError("");
     setCopiedId(null);
@@ -151,16 +153,16 @@ export default function DashboardPage() {
 
   const handlePricingBlur = async () => {
     if (!selected) return;
-    const priceToPlay = Math.max(0, Math.floor(Number(playPriceRef.current?.value) || 0));
-    const priceToClone = Math.max(0, Math.floor(Number(clonePriceRef.current?.value) || 0));
+    const play = Math.max(0, Math.floor(priceToPlay || 0));
+    const clone = Math.max(0, Math.floor(priceToClone || 0));
     try {
       const res = await fetch(`/api/scenarios/${selected.id}/pricing`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceToPlay, priceToClone }),
+        body: JSON.stringify({ priceToPlay: play, priceToClone: clone }),
       });
       if (res.ok) {
-        setSelected(prev => (prev ? { ...prev, priceToPlay, priceToClone } : prev));
+        setSelected(prev => (prev ? { ...prev, priceToPlay: play, priceToClone: clone } : prev));
         setPricingSaved(true);
         if (pricingTimer.current) clearTimeout(pricingTimer.current);
         pricingTimer.current = setTimeout(() => setPricingSaved(false), 2000);
@@ -430,11 +432,10 @@ export default function DashboardPage() {
                   <div className="flex-1">
                     <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO PLAY</label>
                     <input
-                      ref={playPriceRef}
-                      key={`play-${selected.id}`}
                       type="number"
                       min={0}
-                      defaultValue={selected.priceToPlay}
+                      value={priceToPlay}
+                      onChange={e => setPriceToPlay(Number(e.target.value))}
                       onBlur={handlePricingBlur}
                       className="w-full"
                       style={{
@@ -452,11 +453,10 @@ export default function DashboardPage() {
                   <div className="flex-1">
                     <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO CLONE</label>
                     <input
-                      ref={clonePriceRef}
-                      key={`clone-${selected.id}`}
                       type="number"
                       min={0}
-                      defaultValue={selected.priceToClone}
+                      value={priceToClone}
+                      onChange={e => setPriceToClone(Number(e.target.value))}
                       onBlur={handlePricingBlur}
                       className="w-full"
                       style={{
