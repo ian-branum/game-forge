@@ -13,16 +13,24 @@ const CATEGORY_META: Record<string, { emoji: string; color: string; label: strin
   narrative: { emoji: "📖",  color: "#f97316", label: "Adventure" },
 };
 
+interface GameVersion {
+  id: string;
+  versionNum: number;
+  prompt: string;
+  createdAt: string;
+}
+
 interface ScenarioSummary {
   id: string;
   userId: string;
   title: string;
   category: string;
   prompt: string;
-  modificationPrompts: string[];
   isPublic: boolean;
   priceToPlay: number;
   priceToClone: number;
+  activeVersionId: string | null;
+  versions: GameVersion[];
   createdAt: string;
 }
 
@@ -45,6 +53,12 @@ export default function DashboardPage() {
   const [modifyPrompt, setModifyPrompt] = useState("");
   const [modifying, setModifying] = useState(false);
   const [modifyError, setModifyError] = useState("");
+
+  // Version history (detail panel source of truth)
+  const [versions, setVersions] = useState<GameVersion[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
+  const [settingActiveId, setSettingActiveId] = useState<string | null>(null);
 
   // Pricing inputs (controlled so they repopulate on game switch)
   const [priceToPlay, setPriceToPlay] = useState(0);
@@ -79,6 +93,10 @@ export default function DashboardPage() {
 
   const selectScenario = (s: ScenarioSummary) => {
     setSelected(s);
+    setVersions(s.versions ?? []);
+    setActiveVersionId(s.activeVersionId ?? null);
+    setDeletingVersionId(null);
+    setSettingActiveId(null);
     setPriceToPlay(s.priceToPlay ?? 0);
     setPriceToClone(s.priceToClone ?? 0);
     setModifyPrompt("");
@@ -134,20 +152,80 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ modificationPrompt: modifyPrompt }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        setModifyError("Not enough credits");
+        return;
+      }
       if (!res.ok) {
         setModifyError(data.error ?? "Modify failed");
         return;
       }
-      setModifyPrompt("");
-      loadScenarios();
-      setSelected(prev =>
-        prev && data.scenario ? { ...prev, modificationPrompts: data.scenario.modificationPrompts } : prev
-      );
+      // New version is created and becomes active — update local state only
+      const newVersion = data.version as GameVersion | undefined;
+      if (newVersion) {
+        setModifyPrompt("");
+        setVersions(prev => [...prev, newVersion]);
+        setActiveVersionId(newVersion.id);
+        setSelected(prev =>
+          prev ? { ...prev, activeVersionId: newVersion.id, versions: [...(prev.versions ?? []), newVersion] } : prev
+        );
+      }
     } catch {
       setModifyError("Something went wrong. Please try again.");
     } finally {
       setModifying(false);
+    }
+  };
+
+  const handleSetActive = async (versionId: string) => {
+    if (!selected) return;
+    setSettingActiveId(versionId);
+    try {
+      const res = await fetch(`/api/scenarios/${selected.id}/versions/${versionId}`, {
+        method: "PATCH",
+      });
+      if (!res.ok) return;
+      setActiveVersionId(versionId);
+      setSelected(prev => (prev ? { ...prev, activeVersionId: versionId } : prev));
+    } catch { /* ignore network errors */ } finally {
+      setSettingActiveId(null);
+    }
+  };
+
+  const handleDeleteVersion = async (versionId: string) => {
+    if (!selected) return;
+    const prevVersions = versions;
+    const prevActive = activeVersionId;
+    // Optimistic: remove the row immediately
+    setVersions(prev => prev.filter(v => v.id !== versionId));
+    setDeletingVersionId(versionId);
+    try {
+      const res = await fetch(`/api/scenarios/${selected.id}/versions/${versionId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error ?? "Delete failed");
+      }
+      // Server returns the promoted id when the deleted version was active
+      const nextActive = (data.newActiveVersionId as string | null) ?? prevActive;
+      if (data.newActiveVersionId !== undefined) setActiveVersionId(nextActive);
+      setSelected(prev =>
+        prev
+          ? {
+              ...prev,
+              activeVersionId: nextActive,
+              versions: prev.versions.filter(v => v.id !== versionId),
+            }
+          : prev
+      );
+    } catch {
+      // Revert optimistic removal
+      setVersions(prevVersions);
+      setActiveVersionId(prevActive);
+    } finally {
+      setDeletingVersionId(null);
     }
   };
 
@@ -181,7 +259,6 @@ export default function DashboardPage() {
   const meta = selected ? (CATEGORY_META[selected.category] ?? CATEGORY_META.tactical) : null;
   const isOwner = selected ? selected.userId === currentUserId : false;
   const showPricing = !!(selected && isOwner && selected.isPublic);
-  const allPrompts = selected ? [selected.prompt, ...(selected.modificationPrompts ?? [])] : [];
 
   return (
     <div className="flex" style={{ height: "calc(100vh - 56px)" }}>
@@ -370,18 +447,78 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Your Prompts + Modify */}
+            {/* Version history + Modify */}
             <div className={`px-8 py-6 ${showPricing ? "" : "border-b"}`} style={{ borderColor: "#1e2a4a" }}>
-              <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>YOUR PROMPTS</div>
+              <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>VERSION HISTORY</div>
 
-              <div className="space-y-2 mb-4">
-                {allPrompts.map((p, i) => (
-                  <div key={i} className="flex gap-2 items-baseline">
-                    <span className="text-gray-500 text-sm flex-shrink-0">{i + 1}.</span>
-                    <p className="text-gray-300 text-sm leading-relaxed italic flex-1">&ldquo;{p}&rdquo;</p>
-                  </div>
-                ))}
-              </div>
+              {versions.length === 0 ? (
+                <p className="text-gray-600 text-sm italic">No versions yet.</p>
+              ) : (
+                <div>
+                  {versions.map(v => {
+                    const isActive = v.id === activeVersionId;
+                    const isDeleting = deletingVersionId === v.id;
+                    const isSettingActive = settingActiveId === v.id;
+                    return (
+                      <div key={v.id} className="flex items-center gap-3 py-2.5 border-b border-gray-800/70 last:border-b-0">
+                        {/* Version badge */}
+                        <span
+                          className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
+                          style={{ background: `${meta.color}1a`, border: `1px solid ${meta.color}44`, color: meta.color }}>
+                          V{v.versionNum}
+                        </span>
+
+                        {/* Prompt text */}
+                        <p className="text-gray-300 text-sm leading-relaxed italic flex-1 min-w-0 break-words">
+                          &ldquo;{v.prompt}&rdquo;
+                        </p>
+
+                        {/* Active pill */}
+                        {isActive && (
+                          <span
+                            className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full flex-shrink-0"
+                            style={{ background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e", boxShadow: "0 0 8px #22c55e22" }}>
+                            ● ACTIVE
+                          </span>
+                        )}
+
+                        {/* Owner controls */}
+                        {isOwner && (
+                          <>
+                            {!isActive && (
+                              <button
+                                onClick={() => handleSetActive(v.id)}
+                                disabled={isSettingActive}
+                                className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded flex-shrink-0 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                style={{ background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }}>
+                                {isSettingActive ? "…" : "SET ACTIVE"}
+                              </button>
+                            )}
+                            {versions.length > 1 && (
+                              <button
+                                onClick={() => handleDeleteVersion(v.id)}
+                                disabled={isDeleting}
+                                title={isDeleting ? "Deleting…" : "Delete version"}
+                                className="text-xs px-1.5 py-0.5 rounded flex-shrink-0 transition"
+                                style={{
+                                  color: "#ef4444",
+                                  border: "1px solid #ef444422",
+                                  background: "transparent",
+                                  opacity: isDeleting ? 0.3 : 0.4,
+                                  cursor: isDeleting ? "not-allowed" : "pointer",
+                                }}
+                                onMouseEnter={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                                onMouseLeave={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
+                                {isDeleting ? "…" : "🗑"}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {isOwner && (
                 <div className="mt-4">
@@ -410,7 +547,7 @@ export default function DashboardPage() {
                       disabled={modifying || !modifyPrompt.trim()}
                       className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
-                      {modifying ? "…" : "MODIFY"}
+                      {modifying ? "FORGING…" : "MODIFY"}
                     </button>
                   </div>
                 </div>

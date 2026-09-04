@@ -26,10 +26,14 @@ export async function GET(req: NextRequest) {
       title: true,
       category: true,
       prompt: true,
-      modificationPrompts: true,
       isPublic: true,
       priceToPlay: true,
       priceToClone: true,
+      activeVersionId: true,
+      versions: {
+        select: { id: true, versionNum: true, prompt: true, createdAt: true },
+        orderBy: { versionNum: "asc" },
+      },
       createdAt: true,
     },
   });

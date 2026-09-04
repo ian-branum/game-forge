@@ -58,21 +58,37 @@ model VerificationToken {
 }
 
 model Scenario {
-  id                  String   @id @default(cuid())
-  userId              String
-  category            String
-  title               String
-  prompt              String
-  modificationPrompts String[]
-  payload             Json
-  shareToken          String   @unique @default(cuid())
-  createdAt           DateTime @default(now())
-  archived            Boolean  @default(false)
-  isPublic            Boolean  @default(false)
-  priceToPlay         Int      @default(0)
-  priceToClone        Int      @default(0)
+  id              String   @id @default(cuid())
+  userId          String
+  category        String
+  title           String
+  prompt          String
+  payload         Json
+  shareToken      String   @unique @default(cuid())
+  createdAt       DateTime @default(now())
+  archived        Boolean  @default(false)
+  isPublic        Boolean  @default(false)
+  priceToPlay     Int      @default(0)
+  priceToClone    Int      @default(0)
+  activeVersionId String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions      GameVersion[]
+  activeVersion GameVersion?  @relation("ScenarioActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+}
+
+model GameVersion {
+  id         String   @id @default(cuid())
+  scenarioId String
+  versionNum Int
+  prompt     String
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  scenario  Scenario   @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  activeFor Scenario[] @relation("ScenarioActiveVersion")
+
+  @@unique([scenarioId, versionNum])
 }
 
 model CreditTransaction {
