@@ -26,6 +26,10 @@ export async function GET(req: NextRequest) {
       title: true,
       category: true,
       prompt: true,
+      modificationPrompts: true,
+      isPublic: true,
+      priceToPlay: true,
+      priceToClone: true,
       createdAt: true,
     },
   });

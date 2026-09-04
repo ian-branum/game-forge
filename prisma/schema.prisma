@@ -58,15 +58,19 @@ model VerificationToken {
 }
 
 model Scenario {
-  id         String   @id @default(cuid())
-  userId     String
-  category   String
-  title      String
-  prompt     String
-  payload    Json
-  shareToken String   @unique @default(cuid())
-  createdAt  DateTime @default(now())
-  archived   Boolean  @default(false)
+  id                  String   @id @default(cuid())
+  userId              String
+  category            String
+  title               String
+  prompt              String
+  modificationPrompts String[]
+  payload             Json
+  shareToken          String   @unique @default(cuid())
+  createdAt           DateTime @default(now())
+  archived            Boolean  @default(false)
+  isPublic            Boolean  @default(false)
+  priceToPlay         Int      @default(0)
+  priceToClone        Int      @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
