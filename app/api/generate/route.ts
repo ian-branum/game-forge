@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getServerPlugin } from "@/games/server-registry";
 // Legacy imports — kept until all plugins are migrated
 import { generateTacticalScenario } from "@/lib/generators/tactical";
-import { generateNarrativeScenario } from "@/lib/generators/narrative";
 
 const LEGACY_COSTS: Record<string, number> = {
   trivia:    1,
@@ -103,7 +102,11 @@ export async function POST(req: NextRequest) {
         if (p) payload = await p.generate(prompt);
         break;
       }
-      case "narrative": payload = await generateNarrativeScenario(prompt); break;
+      case "narrative": {
+        const p = getServerPlugin("narrative");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
       default:
         return NextResponse.json({ error: `Unknown category: ${category}` }, { status: 400 });
     }

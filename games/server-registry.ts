@@ -3,6 +3,7 @@ import { triviaPlugin } from "./trivia/plugin";
 import { wordPlugin } from "./word/plugin";
 import { puzzlePlugin } from "./puzzle/plugin";
 import { cardPlugin } from "./card/plugin";
+import { narrativePlugin } from "./narrative/plugin";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REGISTRY: Record<string, ServerPlugin<any>> = {
@@ -10,6 +11,7 @@ const REGISTRY: Record<string, ServerPlugin<any>> = {
   word: wordPlugin,
   puzzle: puzzlePlugin,
   card: cardPlugin,
+  narrative: narrativePlugin,
 };
 
 export function getServerPlugin(gameType: string): ServerPlugin | null {
