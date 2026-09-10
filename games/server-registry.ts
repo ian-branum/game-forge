@@ -1,9 +1,15 @@
 import type { ServerPlugin } from "./shared/types";
 import { triviaPlugin } from "./trivia/plugin";
+import { wordPlugin } from "./word/plugin";
+import { puzzlePlugin } from "./puzzle/plugin";
+import { cardPlugin } from "./card/plugin";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REGISTRY: Record<string, ServerPlugin<any>> = {
   trivia: triviaPlugin,
+  word: wordPlugin,
+  puzzle: puzzlePlugin,
+  card: cardPlugin,
 };
 
 export function getServerPlugin(gameType: string): ServerPlugin | null {

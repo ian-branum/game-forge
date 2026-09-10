@@ -4,9 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getServerPlugin } from "@/games/server-registry";
 // Legacy imports — kept until all plugins are migrated
 import { generateTacticalScenario } from "@/lib/generators/tactical";
-import { generateWordPuzzle } from "@/lib/generators/word";
-import { generateLogicPuzzle } from "@/lib/generators/puzzle";
-import { generateCardScenario } from "@/lib/generators/card";
 import { generateNarrativeScenario } from "@/lib/generators/narrative";
 
 const LEGACY_COSTS: Record<string, number> = {
@@ -91,9 +88,21 @@ export async function POST(req: NextRequest) {
         break;
       }
       case "tactical":  payload = await generateTacticalScenario(prompt); break;
-      case "word":      payload = await generateWordPuzzle(prompt); break;
-      case "puzzle":    payload = await generateLogicPuzzle(prompt); break;
-      case "card":      payload = await generateCardScenario(prompt); break;
+      case "word": {
+        const p = getServerPlugin("word");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
+      case "puzzle": {
+        const p = getServerPlugin("puzzle");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
+      case "card": {
+        const p = getServerPlugin("card");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
       case "narrative": payload = await generateNarrativeScenario(prompt); break;
       default:
         return NextResponse.json({ error: `Unknown category: ${category}` }, { status: 400 });

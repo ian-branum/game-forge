@@ -1,6 +1,9 @@
 import { triviaPlugin } from "./trivia/plugin";
+import { wordPlugin } from "./word/plugin";
+import { puzzlePlugin } from "./puzzle/plugin";
+import { cardPlugin } from "./card/plugin";
 
-const ALL_PLUGINS = [triviaPlugin];
+const ALL_PLUGINS = [triviaPlugin, wordPlugin, puzzlePlugin, cardPlugin];
 
 export const CATALOG = ALL_PLUGINS.map(p => p.meta);
 
