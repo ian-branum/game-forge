@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getServerPlugin } from "@/games/server-registry";
-// Legacy imports — kept until all plugins are migrated
-import { generateTacticalScenario } from "@/lib/generators/tactical";
 
 const LEGACY_COSTS: Record<string, number> = {
   trivia:    1,
@@ -86,7 +84,11 @@ export async function POST(req: NextRequest) {
         if (plugin) payload = await plugin.generate(prompt);
         break;
       }
-      case "tactical":  payload = await generateTacticalScenario(prompt); break;
+      case "tactical": {
+        const p = getServerPlugin("tactical");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
       case "word": {
         const p = getServerPlugin("word");
         if (p) payload = await p.generate(prompt);

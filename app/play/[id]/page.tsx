@@ -1,20 +1,23 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { normandyScenario } from "@/lib/squad-leader/scenarios/normandy";
+import { normandyScenario } from "@/games/tactical/engine/scenarios/normandy";
 import { triviaDemo } from "@/lib/demos/trivia-demo";
 import { narrativeDemo } from "@/games/narrative/demo";
 import { wordDemo } from "@/games/word/demo";
 import { puzzleDemo } from "@/games/puzzle/demo";
 import { cardDemo } from "@/games/card/demo";
-import TacticalGame from "@/components/TacticalGame";
 import OthelloGame from "@/components/OthelloGame";
 import { getPlayerPlugin } from "@/games/player-registry";
-import type { ScenarioDefinition } from "@/lib/squad-leader/types";
 
 export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  if (id === "normandy-demo") return <TacticalGame scenario={normandyScenario} />;
+  if (id === "normandy-demo") {
+    const plugin = getPlayerPlugin("tactical");
+    if (!plugin) return notFound();
+    const { Player } = plugin;
+    return <Player scenario={normandyScenario} />;
+  }
   if (id === "othello-demo")  return <OthelloGame />;
 
   if (id === "trivia-demo") {
@@ -59,17 +62,12 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
   const plugin = getPlayerPlugin(row.category);
   if (plugin) {
     const { Player } = plugin;
-    return <Player scenario={row.payload} />;
+    // For tactical, the stored payload may not have the DB id set
+    const payload = row.category === "tactical"
+      ? { ...(row.payload as object), id: row.id }
+      : row.payload;
+    return <Player scenario={payload} />;
   }
 
-  // Legacy fallback for non-migrated types
-  switch (row.category) {
-    case "tactical": {
-      const scenario = row.payload as unknown as ScenarioDefinition;
-      scenario.id = row.id;
-      return <TacticalGame scenario={scenario} />;
-    }
-    default:
-      return notFound();
-  }
+  return notFound();
 }
