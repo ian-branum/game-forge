@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { normandyScenario } from "@/games/tactical/engine/scenarios/normandy";
-import { triviaDemo } from "@/lib/demos/trivia-demo";
+import { triviaDemo } from "@/games/trivia/demo";
 import { narrativeDemo } from "@/games/narrative/demo";
 import { wordDemo } from "@/games/word/demo";
 import { puzzleDemo } from "@/games/puzzle/demo";

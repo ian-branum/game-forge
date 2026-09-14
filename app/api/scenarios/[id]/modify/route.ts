@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { generateTacticalScenario } from "@/lib/generators/tactical";
-import { generateTriviaScenario } from "@/lib/generators/trivia";
-import { generateWordPuzzle } from "@/lib/generators/word";
-import { generateLogicPuzzle } from "@/lib/generators/puzzle";
-import { generateCardScenario } from "@/lib/generators/card";
-import { generateNarrativeScenario } from "@/lib/generators/narrative";
-
-const GENERATION_COSTS: Record<string, number> = {
-  tactical:  3,
-  trivia:    1,
-  word:      2,
-  puzzle:    1,
-  card:      2,
-  narrative: 4,
-};
+import { getServerPlugin } from "@/games/server-registry";
 
 export async function POST(
   req: NextRequest,
@@ -41,8 +27,12 @@ export async function POST(
   if (scenario.userId !== session.user.id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // Credit check — same cost as an initial forge for this category
-  const cost = GENERATION_COSTS[scenario.category] ?? 2;
+  // Credit check — cost comes from the plugin registry
+  const serverPlugin = getServerPlugin(scenario.category);
+  if (!serverPlugin) {
+    return NextResponse.json({ error: `Unknown category: ${scenario.category}` }, { status: 400 });
+  }
+  const cost = serverPlugin.meta.creditCost;
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user || user.credits < cost) {
     return NextResponse.json(
@@ -63,19 +53,10 @@ export async function POST(
     `[Modification]: ${modificationPrompt}`,
   ].join("\n");
 
-  // Run the generator for this scenario's category with the chained context
+  // Run the generator via the plugin registry
   let payload: unknown;
   try {
-    switch (scenario.category) {
-      case "tactical":  payload = await generateTacticalScenario(chainedPrompt); break;
-      case "trivia":    payload = await generateTriviaScenario(chainedPrompt); break;
-      case "word":      payload = await generateWordPuzzle(chainedPrompt); break;
-      case "puzzle":    payload = await generateLogicPuzzle(chainedPrompt); break;
-      case "card":      payload = await generateCardScenario(chainedPrompt); break;
-      case "narrative": payload = await generateNarrativeScenario(chainedPrompt); break;
-      default:
-        return NextResponse.json({ error: `Unknown category: ${scenario.category}` }, { status: 400 });
-    }
+    payload = await serverPlugin.generate(chainedPrompt);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
