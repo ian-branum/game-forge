@@ -451,8 +451,14 @@ export default function DashboardPage() {
             <div className={`px-8 py-6 ${showPricing ? "" : "border-b"}`} style={{ borderColor: "#1e2a4a" }}>
               <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>VERSION HISTORY</div>
 
+              {/* Original prompt — always visible */}
+              <div className="mb-4 pb-4 border-b border-gray-800/70">
+                <span className="font-orbitron text-[10px] tracking-widest text-gray-500 uppercase mr-2">Original prompt</span>
+                <p className="text-gray-300 text-sm leading-relaxed italic mt-1">&ldquo;{selected.prompt}&rdquo;</p>
+              </div>
+
               {versions.length === 0 ? (
-                <p className="text-gray-600 text-sm italic">No versions yet.</p>
+                <p className="text-gray-600 text-sm italic">No revisions yet.</p>
               ) : (
                 <div>
                   {versions.map(v => {
