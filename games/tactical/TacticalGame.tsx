@@ -540,6 +540,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
   const [showRules, setShowRules]             = useState(false);
   const [reachableTiles, setReachableTiles]   = useState<Set<string>>(new Set());
   const [attackableTargets, setAttackableTargets] = useState<Set<string>>(new Set());
+  const [moveHistory, setMoveHistory]         = useState<GameState[]>([]);
   const [axisActing, setAxisActing]           = useState(false);
   const [axisLog, setAxisLog]                 = useState<string[]>([]);
   const [tooltip, setTooltip]                 = useState<TooltipState | null>(null);
@@ -559,6 +560,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     setGameState(initGame(scenario));
     setReachableTiles(new Set());
     setAttackableTargets(new Set());
+    setMoveHistory([]);
     setShowBriefing(true);
   }, [scenario]);
 
@@ -614,6 +616,16 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     setHoveredObjLabel(null);
   }, []);
 
+  const handleUndoMove = useCallback(() => {
+    if (moveHistory.length === 0) return;
+    const prev = moveHistory[moveHistory.length - 1];
+    setMoveHistory(h => h.slice(0, -1));
+    setGameState(prev);
+    setReachableTiles(new Set(
+      prev.activeUnit ? getReachableTiles(prev, prev.activeUnit).map(p => `${p.row},${p.col}`) : []
+    ));
+  }, [moveHistory]);
+
   const handleHexClick = useCallback((row: number, col: number) => {
     if (!gameState || gameState.result !== "ongoing" || gameState.faction !== "allied") return;
     const { phase, activeUnit } = gameState;
@@ -621,6 +633,8 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     if (phase === "movement" && activeUnit) {
       const key = `${row},${col}`;
       if (reachableTiles.has(key)) {
+        // Push current state to undo history before moving
+        setMoveHistory(h => [...h, gameState]);
         const newState = moveUnit(gameState, activeUnit, { row, col });
         setReachableTiles(new Set(getReachableTiles(newState, activeUnit).map(p => `${p.row},${p.col}`)));
         setGameState(newState);
@@ -628,6 +642,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
       }
     }
 
+    // Clicking on a unit: only change selection if no reachable move target was clicked
     const unitOnTile = gameState.units.find(u => u.pos.row === row && u.pos.col === col && u.status !== "eliminated");
     if (unitOnTile?.faction === "allied") {
       setGameState({ ...gameState, activeUnit: unitOnTile.id });
@@ -716,6 +731,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     const nextState = advancePhase(gameState);
     setGameState({ ...nextState, activeUnit: null });
     setReachableTiles(new Set()); setAttackableTargets(new Set());
+    setMoveHistory([]);
   }, [gameState]);
 
   // ── Briefing ──────────────────────────────────────────────────────────────
@@ -895,7 +911,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
                   {unit && (
                     <g
                       transform={`translate(${cx - 18},${cy - 14})`}
-                      onClick={e => { e.stopPropagation(); if (unit.faction === "allied") setGameState(gs => gs ? { ...gs, activeUnit: unit.id } : gs); }}
+                      onClick={e => { e.stopPropagation(); handleHexClick(r, c); }}
                       style={{ filter: isAttackableTarget ? "drop-shadow(0 0 4px #ef4444)" : isSelected ? "drop-shadow(0 0 5px #ffffff)" : "none" }}
                     >
                       <svg width="36" height="26" viewBox="0 0 36 26" overflow="visible">
@@ -1052,7 +1068,14 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
             </div>
           ))}
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center gap-2">
+          {faction === "allied" && !axisActing && phase === "movement" && moveHistory.length > 0 && (
+            <button onClick={handleUndoMove}
+              className="px-3 py-2 rounded-lg font-orbitron font-bold text-xs tracking-wider transition"
+              style={{ background: "#f59e0b22", border: "1px solid #f59e0b66", color: "#f59e0b" }}>
+              ↩ UNDO
+            </button>
+          )}
           {faction === "allied" && !axisActing && (
             <button onClick={handleEndPhase}
               className="px-4 py-2 rounded-lg font-orbitron font-bold text-xs tracking-wider transition"
