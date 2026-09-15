@@ -200,8 +200,7 @@ function ObjectiveMarker({ cx, cy, color }: { cx: number; cy: number; color: str
 interface TooltipState {
   x: number; y: number;
   terrain: string;
-  unitName?: string;
-  unitStatus?: string;
+  units: Unit[];
 }
 
 function blendColor(hex1: string, hex2: string, t: number): string {
@@ -209,6 +208,238 @@ function blendColor(hex1: string, hex2: string, t: number): string {
   const [r1,g1,b1] = parse(hex1);
   const [r2,g2,b2] = parse(hex2);
   return `rgb(${Math.round(r1*(1-t)+r2*t)},${Math.round(g1*(1-t)+g2*t)},${Math.round(b1*(1-t)+b2*t)})`;
+}
+
+// ─── Counter card (tooltip unit representation) ───────────────────────────────
+function UnitCounter({ unit }: { unit: Unit }) {
+  const fill   = FACTION_FILL[unit.faction];
+  const stroke = FACTION_STROKE[unit.faction];
+  const borderColor = unit.faction === "allied" ? "#4488ff" : "#cc3333";
+  const statusColor = STATUS_COLORS[unit.status];
+
+  return (
+    <div style={{
+      position: "relative",
+      width: 80,
+      height: 72,
+      background: fill,
+      border: `2px solid ${borderColor}`,
+      borderRadius: 3,
+      display: "grid",
+      gridTemplateColumns: "1fr auto 1fr",
+      gridTemplateRows: "1fr auto 1fr",
+      padding: "4px",
+      boxSizing: "border-box",
+      opacity: unit.status === "eliminated" ? 0.4 : 1,
+    }}>
+      {/* Top-left: Attack */}
+      <div style={{ gridColumn: 1, gridRow: 1, display: "flex", alignItems: "flex-start", justifyContent: "flex-start" }}>
+        <span style={{ color: stroke, fontSize: 14, fontWeight: "bold", fontFamily: "monospace", lineHeight: 1 }}>{unit.attack}</span>
+      </div>
+      {/* Top-center: Range (small, between ATK and DEF) */}
+      <div style={{ gridColumn: 2, gridRow: 1, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+        <span style={{ color: stroke, fontSize: 9, fontFamily: "monospace", lineHeight: 1, opacity: 0.8 }}>{unit.range}</span>
+      </div>
+      {/* Top-right: Defense */}
+      <div style={{ gridColumn: 3, gridRow: 1, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}>
+        <span style={{ color: stroke, fontSize: 14, fontWeight: "bold", fontFamily: "monospace", lineHeight: 1 }}>{unit.defense}</span>
+      </div>
+      {/* Center: NATO symbol */}
+      <div style={{ gridColumn: "1 / 4", gridRow: 2, display: "flex", justifyContent: "center", alignItems: "center", padding: "2px 0" }}>
+        <svg width="36" height="26" viewBox="0 0 36 26" overflow="visible">
+          <NATOSymbol unit={unit} />
+        </svg>
+      </div>
+      {/* Bottom-left: Movement */}
+      <div style={{ gridColumn: 1, gridRow: 3, display: "flex", alignItems: "flex-end", justifyContent: "flex-start" }}>
+        <span style={{ color: stroke, fontSize: 14, fontWeight: "bold", fontFamily: "monospace", lineHeight: 1 }}>{unit.movement}</span>
+      </div>
+      {/* Bottom-center: status dot */}
+      <div style={{ gridColumn: 2, gridRow: 3, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        {unit.status !== "normal" && (
+          <span style={{ fontSize: 7, color: statusColor, lineHeight: 1 }}>
+            {unit.status === "suppressed" ? "SUP" : unit.status === "broken" ? "BRK" : "✕"}
+          </span>
+        )}
+      </div>
+      {/* Bottom-right: Morale */}
+      <div style={{ gridColumn: 3, gridRow: 3, display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
+        <span style={{ color: stroke, fontSize: 14, fontWeight: "bold", fontFamily: "monospace", lineHeight: 1 }}>{unit.morale}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Rules Modal ──────────────────────────────────────────────────────────────
+function RulesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: "#070d20", border: "2px solid #1e2a4a", borderRadius: 10, maxWidth: 640, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: "24px 28px", color: "#cbd5e1", fontSize: 13, lineHeight: 1.7 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ fontFamily: "var(--font-orbitron, monospace)", color: "#ffd700", fontSize: 18, fontWeight: 900, margin: 0 }}>SQUAD LEADER — RULES</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>✕</button>
+        </div>
+
+        <RulesSection num="1.0" title="OVERVIEW">
+          <p>Squad Leader is a hex-based tactical wargame set in World War II. You command Allied infantry squads against an AI-controlled Axis force. Victory is achieved by capturing and holding key objectives before time runs out.</p>
+          <p>The map is divided into hexagonal tiles. Each hex represents roughly 40 meters of ground. Units represent squads, teams, and leaders at platoon scale.</p>
+        </RulesSection>
+
+        <RulesSection num="2.0" title="SEQUENCE OF PLAY">
+          <p>Each game turn consists of two player turns — Allied then Axis. Each player turn follows this sequence:</p>
+          <ol style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li><strong style={{ color: "#e2e8f0" }}>Combat Phase</strong> — All units may fire at enemy units in range and line of sight.</li>
+            <li><strong style={{ color: "#e2e8f0" }}>Movement Phase</strong> — All units may move up to their Movement allowance.</li>
+            <li><strong style={{ color: "#e2e8f0" }}>Rally Phase</strong> — Suppressed and broken units may attempt to recover.</li>
+          </ol>
+          <p>After the Axis player completes their Rally Phase, the turn counter advances and a new turn begins with the Allied Combat Phase.</p>
+          <p><em style={{ color: "#94a3b8" }}>Design note: Combat-before-movement means suppressive fire happens first. Units that advance into the open do so through a prepared defense — exactly as it worked in WWII infantry tactics.</em></p>
+        </RulesSection>
+
+        <RulesSection num="3.0" title="MOVEMENT">
+          <p>Each unit has a <strong style={{ color: "#e2e8f0" }}>Movement (MOV)</strong> value representing its movement points (MP) per turn. Moving into a hex costs MP based on terrain (see Section 9.0).</p>
+          <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li>A unit may move into any reachable hex (shown in blue) during the Movement Phase.</li>
+            <li>Units may move multiple hexes in one phase as long as they have MP remaining.</li>
+            <li>Units may <em>not</em> move into or through a hex occupied by an enemy unit.</li>
+            <li><strong style={{ color: "#f59e0b" }}>Suppressed</strong> units pay +1 MP per hex entered.</li>
+            <li><strong style={{ color: "#ef4444" }}>Broken</strong> units may only flee — moving toward their own map edge.</li>
+            <li><strong style={{ color: "#6b7280" }}>Eliminated</strong> units may not move.</li>
+          </ul>
+        </RulesSection>
+
+        <RulesSection num="4.0" title="COMBAT">
+          <p>During the Combat Phase, each unit may fire once at an enemy unit within range and line of sight.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>To fire:</strong> Select your unit, then click a highlighted enemy target (red border). Combat is resolved automatically.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>Fire Resolution:</strong></p>
+          <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li>Roll: <code style={{ color: "#a5b4fc" }}>Random(0–10) + ATK + Leader Bonus</code></li>
+            <li>Defense: <code style={{ color: "#a5b4fc" }}>DEF + Terrain Bonus − Suppression Penalty</code></li>
+            <li>Roll &gt; Defense + 4 → <strong style={{ color: "#6b7280" }}>ELIMINATED</strong></li>
+            <li>Roll &gt; Defense + 2 → <strong style={{ color: "#ef4444" }}>BROKEN</strong></li>
+            <li>Roll &gt; Defense → <strong style={{ color: "#f59e0b" }}>SUPPRESSED</strong></li>
+            <li>Otherwise → <strong style={{ color: "#94a3b8" }}>MISS</strong></li>
+          </ul>
+          <p>A unit that has fired is marked SPENT for the remainder of the phase.</p>
+        </RulesSection>
+
+        <RulesSection num="5.0" title="LINE OF SIGHT">
+          <p>A unit may only fire at targets it can see. Line of sight (LOS) is traced from the center of the firing hex to the center of the target hex.</p>
+          <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li><strong style={{ color: "#e2e8f0" }}>Buildings</strong> block LOS entirely.</li>
+            <li><strong style={{ color: "#e2e8f0" }}>Woods</strong> block LOS beyond 2 hexes.</li>
+            <li><strong style={{ color: "#e2e8f0" }}>Wheatfields</strong> block LOS beyond 3 hexes.</li>
+            <li><strong style={{ color: "#e2e8f0" }}>Walls</strong> provide partial cover but do not block LOS.</li>
+            <li>Open ground and roads do not block LOS.</li>
+          </ul>
+        </RulesSection>
+
+        <RulesSection num="6.0" title="MORALE & RALLY">
+          <p>Units have a <strong style={{ color: "#e2e8f0" }}>Morale (MRL)</strong> value from 1–10. Combat results can degrade unit status:</p>
+          <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li><strong style={{ color: "#22c55e" }}>Normal</strong> — fully operational</li>
+            <li><strong style={{ color: "#f59e0b" }}>Suppressed</strong> — movement penalized; automatic rally to Normal in Rally Phase</li>
+            <li><strong style={{ color: "#ef4444" }}>Broken</strong> — can only flee; must roll to rally</li>
+            <li><strong style={{ color: "#6b7280" }}>Eliminated</strong> — removed from play permanently</li>
+          </ul>
+          <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>Random(0–10) + Leader Bonus &gt; (10 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
+        </RulesSection>
+
+        <RulesSection num="7.0" title="LEADERS">
+          <p>Leader units (Sergeants, Lieutenants, etc.) provide a <strong style={{ color: "#e2e8f0" }}>+1 combat bonus</strong> and <strong style={{ color: "#e2e8f0" }}>+2 rally bonus</strong> to all friendly units within 2 hexes.</p>
+          <p>Leaders are high-value targets — losing your leader significantly degrades your force's effectiveness. Keep them close to the fighting, but not in the front line.</p>
+        </RulesSection>
+
+        <RulesSection num="8.0" title="OBJECTIVES & VICTORY">
+          <p>Objectives (marked with ⭐) are key terrain features that must be captured. A unit captures an objective by occupying its hex.</p>
+          <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
+            <li>An objective is held by whichever faction last occupied it.</li>
+            <li>Objectives are shown in the top bar: <span style={{ color: "#4488ff" }}>blue = Allied</span>, <span style={{ color: "#cc3333" }}>red = Axis</span>, grey = neutral.</li>
+          </ul>
+          <p><strong style={{ color: "#e2e8f0" }}>Allied Victory:</strong> Hold the required number of objectives by the end of the final turn, OR eliminate all Axis units.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>Axis Victory:</strong> Prevent the Allies from meeting their objective threshold, OR eliminate all Allied units. Ties go to the defender (Axis).</p>
+        </RulesSection>
+
+        <RulesSection num="9.0" title="TERRAIN EFFECTS">
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #1e2a4a" }}>
+                <th style={{ textAlign: "left", padding: "4px 8px", color: "#94a3b8" }}>Terrain</th>
+                <th style={{ textAlign: "center", padding: "4px 8px", color: "#94a3b8" }}>Move Cost</th>
+                <th style={{ textAlign: "center", padding: "4px 8px", color: "#94a3b8" }}>Defense Bonus</th>
+                <th style={{ textAlign: "left", padding: "4px 8px", color: "#94a3b8" }}>LOS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Open Ground", "1 MP", "+0", "Clear"],
+                ["Road", "0.5 MP", "+0", "Clear"],
+                ["Wheatfield", "1 MP", "+1", "Blocks beyond 3 hexes"],
+                ["Wall", "1 MP", "+1", "Partial block"],
+                ["Rubble", "2 MP", "+1", "Clear"],
+                ["Woods", "2 MP", "+2", "Blocks beyond 2 hexes"],
+                ["Building", "2 MP", "+3", "Blocks entirely"],
+              ].map(([t, mp, def, los]) => (
+                <tr key={t} style={{ borderBottom: "1px solid #0d1530" }}>
+                  <td style={{ padding: "4px 8px", color: "#e2e8f0" }}>{t}</td>
+                  <td style={{ padding: "4px 8px", color: "#a5b4fc", textAlign: "center" }}>{mp}</td>
+                  <td style={{ padding: "4px 8px", color: "#22c55e", textAlign: "center" }}>{def}</td>
+                  <td style={{ padding: "4px 8px", color: "#94a3b8" }}>{los}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </RulesSection>
+
+        <RulesSection num="10.0" title="COUNTER LEGEND">
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gridTemplateRows: "auto auto auto", width: 80, height: 72, background: "#4a5e2a", border: "2px solid #4488ff", borderRadius: 3, padding: 4, boxSizing: "border-box", fontSize: 11, fontFamily: "monospace" }}>
+                <div style={{ color: "#a0b860", fontWeight: "bold", fontSize: 14 }}>ATK</div>
+                <div style={{ color: "#a0b860", fontSize: 9, textAlign: "center" }}>RNG</div>
+                <div style={{ color: "#a0b860", fontWeight: "bold", fontSize: 14, textAlign: "right" }}>DEF</div>
+                <div style={{ gridColumn: "1/4", display: "flex", justifyContent: "center", padding: "2px 0" }}>
+                  <svg width="36" height="26" viewBox="0 0 36 26"><NATOInfantry fill="#4a5e2a" stroke="#a0b860" /></svg>
+                </div>
+                <div style={{ color: "#a0b860", fontWeight: "bold", fontSize: 14 }}>MOV</div>
+                <div />
+                <div style={{ color: "#a0b860", fontWeight: "bold", fontSize: 14, textAlign: "right" }}>MRL</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.8 }}>
+              <div><strong style={{ color: "#e2e8f0" }}>ATK</strong> — Attack firepower (higher = more lethal)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>RNG</strong> — Range in hexes (small number, top-center)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>DEF</strong> — Defense value (added to terrain bonus)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>MOV</strong> — Movement points per turn</div>
+              <div><strong style={{ color: "#e2e8f0" }}>MRL</strong> — Morale (affects rally difficulty)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>Symbol</strong> — Unit type (infantry, MG, mortar, leader)</div>
+            </div>
+          </div>
+        </RulesSection>
+
+        <div style={{ textAlign: "center", marginTop: 20, color: "#4b5563", fontSize: 11 }}>
+          Click anywhere outside or press ✕ to close
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RulesSection({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <h3 style={{ fontFamily: "var(--font-orbitron, monospace)", color: "#4488ff", fontSize: 12, fontWeight: 700, marginBottom: 6, letterSpacing: "0.05em" }}>
+        {num} {title}
+      </h3>
+      <div style={{ color: "#94a3b8" }}>{children}</div>
+    </div>
+  );
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -226,7 +457,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
         style={{ border: "2px solid #4488ff44", background: "#070d20" }}>
 
         <div className="px-6 py-4 text-center" style={{ background: "#0a1440", borderBottom: "1px solid #1e2a4a" }}>
-          <div className="font-orbitron text-xs text-gray-500 mb-1 tracking-widest">OPERATION BRIEFING</div>
+          <div className="font-orbitron text-xs text-gray-500 mb-1 tracking-widest">SQUAD LEADER — OPERATION BRIEFING</div>
           <h1 className="font-orbitron text-2xl font-black mb-1" style={{ color: "#ffd700" }}>{scenario.title}</h1>
           <p className="text-gray-400 text-sm">{scenario.subtitle}</p>
         </div>
@@ -306,6 +537,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
 export default function TacticalGame({ scenario }: TacticalGameProps) {
   const [gameState, setGameState]             = useState<GameState | null>(null);
   const [showBriefing, setShowBriefing]       = useState(true);
+  const [showRules, setShowRules]             = useState(false);
   const [reachableTiles, setReachableTiles]   = useState<Set<string>>(new Set());
   const [attackableTargets, setAttackableTargets] = useState<Set<string>>(new Set());
   const [axisActing, setAxisActing]           = useState(false);
@@ -341,12 +573,12 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     if (!gameState || gameState.result !== "ongoing" || gameState.faction !== "allied") return;
     const { activeUnit, phase } = gameState;
     if (!activeUnit) { setReachableTiles(new Set()); setAttackableTargets(new Set()); return; }
-    if (phase === "movement") {
-      setReachableTiles(new Set(getReachableTiles(gameState, activeUnit).map(p => `${p.row},${p.col}`)));
-      setAttackableTargets(new Set());
-    } else if (phase === "combat") {
+    if (phase === "combat") {
       setAttackableTargets(new Set(getAttackableTargets(gameState, activeUnit).map(u => u.id)));
       setReachableTiles(new Set());
+    } else if (phase === "movement") {
+      setReachableTiles(new Set(getReachableTiles(gameState, activeUnit).map(p => `${p.row},${p.col}`)));
+      setAttackableTargets(new Set());
     } else {
       setReachableTiles(new Set()); setAttackableTargets(new Set());
     }
@@ -365,12 +597,12 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
 
     const tile = gameState.map[hex.row]?.[hex.col];
     if (!tile) return;
-    const unit = gameState.units.find(u => u.pos.row === hex.row && u.pos.col === hex.col && u.status !== "eliminated");
+    const hexUnits = gameState.units.filter(u => u.pos.row === hex.row && u.pos.col === hex.col && u.status !== "eliminated");
     const obj  = gameState.objectives.find(o => o.pos.row === hex.row && o.pos.col === hex.col);
 
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
     tooltipTimer.current = setTimeout(() => {
-      setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, terrain: tile.terrain, unitName: unit?.name, unitStatus: unit?.status });
+      setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, terrain: tile.terrain, units: hexUnits });
       if (obj) setHoveredObjLabel(obj.label);
       else setHoveredObjLabel(null);
     }, 600);
@@ -494,7 +726,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
   const selectedUnit  = activeUnit ? units.find(u => u.id === activeUnit) ?? null : null;
   const alliedUnits   = units.filter(u => u.faction === "allied");
   const axisUnits     = units.filter(u => u.faction === "axis");
-  const phaseLabel: Record<Phase, string> = { movement: "MOVEMENT", combat: "COMBAT", rally: "RALLY" };
+  const phaseLabel: Record<Phase, string> = { combat: "COMBAT", movement: "MOVEMENT", rally: "RALLY" };
   const factionColor  = faction === "allied" ? "#4488ff" : "#cc3333";
   const factionLabel  = faction === "allied" ? "Allied" : "Axis";
 
@@ -546,12 +778,17 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
       <div className="flex items-center justify-between px-4 py-2 border-b"
         style={{ borderColor: "#1e2a4a", background: "#070d20" }}>
         <div>
-          <span className="font-orbitron font-black text-base" style={{ color: "#4488ff" }}>
-            {scenario.title}
+          <span className="font-orbitron font-black text-base" style={{ color: "#ffd700" }}>
+            SQUAD LEADER
           </span>
           <span className="text-gray-500 text-xs ml-3">{scenario.subtitle}</span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-3 text-sm">
+          <button onClick={() => setShowRules(true)}
+            className="text-xs px-3 py-1 rounded font-orbitron transition"
+            style={{ background: "#ffd70011", border: "1px solid #ffd70044", color: "#ffd700" }}>
+            📋 RULES
+          </button>
           <button onClick={handleShare}
             className="text-xs px-3 py-1 rounded font-orbitron transition"
             style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: shareCopied ? "#22c55e" : "#4488ff" }}>
@@ -565,6 +802,8 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
           </span>
         </div>
       </div>
+
+      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
       {/* ── Objectives bar ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-4 py-1.5 border-b text-xs"
@@ -673,12 +912,18 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
           </svg>
 
           {tooltip && (
-            <div style={{ position: "absolute", left: tooltip.x + 14, top: tooltip.y + 14, pointerEvents: "none", zIndex: 50, background: "#0a0f2e", border: "1px solid #1e2a4a", borderRadius: 6, padding: "6px 10px", fontSize: 11, maxWidth: 180, boxShadow: "0 2px 12px #000a" }}>
+            <div style={{ position: "absolute", left: tooltip.x + 14, top: tooltip.y + 14, pointerEvents: "none", zIndex: 50, background: "#0a0f2e", border: "1px solid #1e2a4a", borderRadius: 6, padding: "8px 10px", fontSize: 11, maxWidth: 220, boxShadow: "0 2px 12px #000a" }}>
               <div className="font-bold text-white text-xs mb-0.5">{TERRAIN_LABEL[tooltip.terrain]}</div>
-              <div style={{ color: "#94a3b8" }}>{TERRAIN_EFFECT[tooltip.terrain]}</div>
-              {tooltip.unitName && (
-                <div className="mt-1 border-t border-gray-700 pt-1" style={{ color: STATUS_COLORS[tooltip.unitStatus ?? "normal"] }}>
-                  {tooltip.unitName} [{tooltip.unitStatus}]
+              <div style={{ color: "#94a3b8", marginBottom: tooltip.units.length > 0 ? 8 : 0 }}>{TERRAIN_EFFECT[tooltip.terrain]}</div>
+              {tooltip.units.length > 0 && (
+                <div style={{ borderTop: "1px solid #1e2a4a", paddingTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {tooltip.units.slice(0, 3).map(u => (
+                    <UnitCounter key={u.id} unit={u} />
+                  ))}
+                  {tooltip.units.length > 3 && (
+                    <div style={{ color: "#6b7280", fontSize: 10, textAlign: "center" }}>+{tooltip.units.length - 3} more</div>
+                  )}
+                  <div style={{ color: "#4b5563", fontSize: 9, textAlign: "center", marginTop: 2 }}>ATK · RNG · DEF / MOV · MRL</div>
                 </div>
               )}
             </div>

@@ -163,7 +163,7 @@ export function initGame(scenario: ScenarioDefinition): GameState {
     objectives,
     turn: 1,
     turnsTotal: scenario.turnsTotal,
-    phase: "movement",
+    phase: "combat",
     activeUnit: null,
     faction: "allied",
     log: ["Mission start. Good luck, soldier."],
@@ -448,7 +448,7 @@ export function rallyUnit(state: GameState, unitId: string): GameState {
 export function advancePhase(state: GameState): GameState {
   const s = deepCloneState(state);
 
-  const phaseOrder: Phase[] = ["movement", "combat", "rally"];
+  const phaseOrder: Phase[] = ["combat", "movement", "rally"];
   const currentIndex = phaseOrder.indexOf(s.phase);
 
   if (currentIndex < 2) {
@@ -469,13 +469,13 @@ export function advancePhase(state: GameState): GameState {
   if (s.faction === "allied") {
     // Switch to axis
     s.faction = "axis";
-    s.phase = "movement";
+    s.phase = "combat";
     s.activeUnit = null;
     return s;
   } else {
     // Axis done — end of full turn
     s.faction = "allied";
-    s.phase = "movement";
+    s.phase = "combat";
     s.activeUnit = null;
     s.turn += 1;
 
@@ -491,9 +491,28 @@ export function runAxisAI(state: GameState): GameState {
 
   const axisUnits = () => s.units.filter((u) => u.faction === "axis" && u.status !== "eliminated");
 
+  // ── Combat Phase ──
+  s.phase = "combat";
+  s.faction = "axis";
+
+  for (const unit of axisUnits()) {
+    if (unit.hasFired) continue;
+
+    // Find best target: allied in range + LOS, lowest defense+terrain
+    const targets = getAttackableTargets(s, unit.id);
+    if (targets.length === 0) continue;
+
+    const best = targets.reduce((a, b) => {
+      const defA = a.defense + terrainDefenseBonus(s.map, a.pos);
+      const defB = b.defense + terrainDefenseBonus(s.map, b.pos);
+      return defA <= defB ? a : b;
+    });
+
+    s = fireUnit(s, unit.id, best.id);
+  }
+
   // ── Movement Phase ──
   s.phase = "movement";
-  s.faction = "axis";
 
   for (const unit of axisUnits()) {
     if (unit.status === "broken") {
@@ -573,25 +592,6 @@ export function runAxisAI(state: GameState): GameState {
         s = moveUnit(s, unit.id, bestNeighbor);
       }
     }
-  }
-
-  // ── Combat Phase ──
-  s.phase = "combat";
-
-  for (const unit of axisUnits()) {
-    if (unit.hasFired) continue;
-
-    // Find best target: allied in range + LOS, lowest defense+terrain
-    const targets = getAttackableTargets(s, unit.id);
-    if (targets.length === 0) continue;
-
-    const best = targets.reduce((a, b) => {
-      const defA = a.defense + terrainDefenseBonus(s.map, a.pos);
-      const defB = b.defense + terrainDefenseBonus(s.map, b.pos);
-      return defA <= defB ? a : b;
-    });
-
-    s = fireUnit(s, unit.id, best.id);
   }
 
   // ── Rally Phase ──
