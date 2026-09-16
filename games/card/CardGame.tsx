@@ -228,5 +228,19 @@ function KlondikeGame({ scenario }: { scenario: SolitaireScenario }) {
 }
 
 export default function CardGame({ scenario }: { scenario: SolitaireScenario }) {
+  if (scenario.cardMode === "opposed") {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-56px)] items-center justify-center px-6" style={{ background: "#05071a" }}>
+        <div className="text-center max-w-md">
+          <div className="text-5xl mb-4">🃏</div>
+          <div className="font-orbitron font-black text-xl text-white mb-3 tracking-widest">
+            {scenario.title.toUpperCase()}
+          </div>
+          <p className="text-gray-400 text-sm mb-2">Opposed card games coming soon — try Solitaire for now!</p>
+          {scenario.flavour && <p className="text-gray-600 text-xs">{scenario.flavour}</p>}
+        </div>
+      </div>
+    );
+  }
   return <KlondikeGame scenario={scenario} />;
 }

@@ -19,23 +19,40 @@ function shuffledDeck(seed: number): PlayingCard[] {
   return deck;
 }
 
-const SYSTEM_PROMPT = `You are a card game designer. Given a theme, design a thematic solitaire card game.
+const SYSTEM_PROMPT = `You are a card game designer. Given a theme, first decide whether the request is for a SOLITAIRE game or an OPPOSED (two-player, vs an opponent) card game.
 
 Output ONLY valid JSON:
 {
+  "cardMode": "solitaire" | "opposed",
   "title": string,
   "theme": string,
   "flavour": string (1 sentence, max 100 chars),
-  "variant": "klondike" | "freecell" | "pyramid",
-  "rules": string[] (exactly 4 bullet-point rules describing the variant clearly, max 80 chars each)
+  "variant": "klondike" | "freecell" | "pyramid" | null,
+  "rules": string[] | null
 }
 
-Choose the variant that best fits the theme:
-- klondike: classic tableau stacking, good for most themes
-- freecell: all cards visible, strategic, good for mystery/detective themes
-- pyramid: pair cards to 13, good for ancient/history themes
+Detection:
+- "solitaire": single-player patience games (klondike, freecell, pyramid, etc.) that you solve alone.
+- "opposed": games where the player plays against an opponent (Spades, Hearts, Rummy, Poker, Euchre, etc.).
 
-Keep the rules accurate to the chosen variant.`;
+For "solitaire":
+- Choose the variant that best fits the theme:
+  - klondike: classic tableau stacking, good for most themes
+  - freecell: all cards visible, strategic, good for mystery/detective themes
+  - pyramid: pair cards to 13, good for ancient/history themes
+- Provide "rules": exactly 4 bullet-point rules describing the variant clearly, max 80 chars each. Keep them accurate to the chosen variant.
+
+For "opposed":
+- Set "variant" to null and "rules" to null. We do not yet implement opposed card games — just give a thematic "title" and "theme" and a "flavour" line.`;
+
+interface RawCardScenario {
+  cardMode?: string;
+  title?: string;
+  theme?: string;
+  flavour?: string;
+  variant?: "klondike" | "freecell" | "pyramid" | null;
+  rules?: string[] | null;
+}
 
 export async function generateCardScenario(prompt: string): Promise<SolitaireScenario> {
   if (!process.env.DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY is not set");
@@ -47,7 +64,7 @@ export async function generateCardScenario(prompt: string): Promise<SolitaireSce
       model: "deepseek-v4-flash",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Create a thematic solitaire card game about: ${prompt}` },
+        { role: "user", content: `Create a thematic card game about: ${prompt}` },
       ],
       response_format: { type: "json_object" },
       temperature: 0.7,
@@ -65,14 +82,37 @@ export async function generateCardScenario(prompt: string): Promise<SolitaireSce
   const rawContent = data.choices?.[0]?.message?.content;
   if (!rawContent) throw new Error(`DeepSeek returned no content: ${JSON.stringify(data)}`);
 
-  let raw: Omit<SolitaireScenario, "deck">;
+  let raw: RawCardScenario;
   try { raw = JSON.parse(rawContent); }
   catch (e) { throw new Error(`Failed to parse DeepSeek JSON: ${e}. Raw: ${rawContent.slice(0, 500)}`); }
 
-  // Generate a deterministic shuffled deck based on current timestamp (unique per game)
+  // Deterministic shuffled deck based on current timestamp (unique per game).
   const seed = Date.now() & 0xffffff;
   const deck = shuffledDeck(seed);
 
-  const result = { ...raw, deck };
+  if (raw.cardMode === "opposed") {
+    // Opposed card games are not implemented yet — return a minimal valid stub
+    // so the player can render a "Coming Soon" screen.
+    const result: SolitaireScenario = {
+      title: raw.title ?? "Opposed Card Game",
+      theme: raw.theme ?? "Opposed card game",
+      flavour: (raw.flavour ?? "Opposed card games are coming soon — try Solitaire for now.").slice(0, 100),
+      variant: "klondike",
+      rules: ["Opposed card games are coming soon", "Try Solitaire for now"],
+      deck,
+      cardMode: "opposed",
+    };
+    return SolitaireScenarioSchema.parse(result);
+  }
+
+  const result = {
+    title: raw.title,
+    theme: raw.theme,
+    flavour: raw.flavour,
+    variant: raw.variant ?? "klondike",
+    rules: raw.rules ?? [],
+    deck,
+    cardMode: "solitaire" as const,
+  };
   return SolitaireScenarioSchema.parse(result);
 }

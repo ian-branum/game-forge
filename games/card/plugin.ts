@@ -15,7 +15,8 @@ export const cardPlugin: ServerPlugin<SolitaireScenario> = {
     schemaVersion: "1.0",
     available: true,
     supportedProfiles: [
-      { interaction: "challenge", turnModel: "turn-based", runtimeIntelligence: "none" },
+      { interaction: "challenge", turnModel: "turn-based", runtimeIntelligence: "none" },        // solitaire
+      { interaction: "opposed",   turnModel: "turn-based", runtimeIntelligence: "generative" }, // future opposed
     ],
   },
   generate: generateCardScenario,

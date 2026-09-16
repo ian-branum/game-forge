@@ -2,7 +2,7 @@ import React from "react";
 import type { PlayerPlugin } from "./shared/types";
 import { triviaPlayer } from "./trivia/player";
 import { wordPlayer } from "./word/player";
-import { puzzlePlayer } from "./puzzle/player";
+import { abstractStrategyPlayer } from "./abstract-strategy/player";
 import { cardPlayer } from "./card/player";
 import { narrativePlayer } from "./narrative/player";
 import { tacticalPlayer } from "./tactical/player";
@@ -11,7 +11,7 @@ import { tacticalPlayer } from "./tactical/player";
 const PLAYER_REGISTRY: Record<string, PlayerPlugin<any>> = {
   trivia: triviaPlayer,
   word: wordPlayer,
-  puzzle: puzzlePlayer,
+  "abstract-strategy": abstractStrategyPlayer,
   card: cardPlayer,
   narrative: narrativePlayer,
   tactical: tacticalPlayer,

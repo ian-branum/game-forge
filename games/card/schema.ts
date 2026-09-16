@@ -15,6 +15,8 @@ export const SolitaireScenarioSchema = z.object({
   variant: z.enum(["klondike", "freecell", "pyramid"]),
   rules: z.array(z.string()),
   deck: z.array(PlayingCardSchema),
+  // "opposed" is reserved for future two-player card games (Spades, etc.).
+  cardMode: z.enum(["solitaire", "opposed"]).default("solitaire"),
 });
 
 export type Suit = z.infer<typeof SuitSchema>;

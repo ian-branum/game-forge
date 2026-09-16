@@ -7,7 +7,7 @@ const CATEGORIES = [
   { id: "tactical",  label: "Tactical",   emoji: "⚔️",  desc: "Hex-based squad combat",       available: true },
   { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Quiz on any topic",             available: true },
   { id: "word",      label: "Word",        emoji: "📝",  desc: "Word search puzzles",           available: true },
-  { id: "puzzle",    label: "Puzzle",      emoji: "🧩",  desc: "Logic grid puzzles",            available: true },
+  { id: "abstract-strategy", label: "Strategy", emoji: "♟️", desc: "Classic strategy vs AI",    available: true },
   { id: "card",      label: "Card",        emoji: "🃏",  desc: "Solitaire card games",          available: true },
   { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: true },
 ] as const;
@@ -135,12 +135,20 @@ export default function ForgePage() {
         {/* Demo link */}
         <div className="mt-10 pt-8 border-t text-center" style={{ borderColor: "#1e2a4a" }}>
           <p className="text-gray-600 text-xs mb-3 font-orbitron tracking-widest">OR TRY A DEMO</p>
-          <a
-            href="/play/normandy-demo"
-            className="inline-block px-6 py-2 rounded-lg text-sm font-orbitron tracking-widest transition hover:opacity-80"
-            style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#4488ff88" }}>
-            ⚔️ Normandy Demo
-          </a>
+          <div className="flex flex-wrap justify-center gap-3">
+            <a
+              href="/play/normandy-demo"
+              className="inline-block px-6 py-2 rounded-lg text-sm font-orbitron tracking-widest transition hover:opacity-80"
+              style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#4488ff88" }}>
+              ⚔️ Normandy Demo
+            </a>
+            <a
+              href="/play/othello-demo"
+              className="inline-block px-6 py-2 rounded-lg text-sm font-orbitron tracking-widest transition hover:opacity-80"
+              style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#4488ff88" }}>
+              ♟️ Othello Demo
+            </a>
+          </div>
         </div>
       </div>
     </main>

@@ -4,7 +4,7 @@ const SYSTEM_PROMPT = `You are a game-type classifier for a browser game platfor
 
 Available game types:
 - trivia: Quiz/question-answer games on any topic. No opponent. Challenge format.
-- logic-puzzle: Deductive puzzles (grid logic, lateral thinking, riddles). No opponent.
+- abstract-strategy: Classic strategy games vs an AI opponent. Turn-based. Includes Othello, Chess, Checkers, Connect 4, etc.
 - solitaire: Single-player card games. No opponent.
 - tactical: Hex-grid squad combat with AI opponent. Turn-based.
 - opposed-card: Card battle against an AI opponent.

@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
         if (p) payload = await p.generate(prompt);
         break;
       }
-      case "puzzle": {
-        const p = getServerPlugin("puzzle");
+      case "abstract-strategy": {
+        const p = getServerPlugin("abstract-strategy");
         if (p) payload = await p.generate(prompt);
         break;
       }

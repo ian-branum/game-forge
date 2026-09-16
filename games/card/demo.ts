@@ -31,4 +31,5 @@ export const cardDemo: SolitaireScenario = {
     "Empty columns accept only Kings",
   ],
   deck: seededDeck(),
+  cardMode: "solitaire",
 };
