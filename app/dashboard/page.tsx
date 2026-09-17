@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const CATEGORY_META: Record<string, { emoji: string; color: string; label: string }> = {
-  tactical:  { emoji: "⚔️",  color: "#4488ff", label: "Tactical" },
+  sandbox:   { emoji: "🎮",  color: "#4488ff", label: "Games & Puzzles" },
+  tactical:  { emoji: "⚔️",  color: "#f97316", label: "WW2 Tactical" },
   trivia:    { emoji: "🧠",  color: "#a855f7", label: "Trivia" },
   word:      { emoji: "📝",  color: "#22c55e", label: "Word" },
   puzzle:    { emoji: "🧩",  color: "#f59e0b", label: "Puzzle" },
   card:      { emoji: "🃏",  color: "#ef4444", label: "Card" },
-  narrative: { emoji: "📖",  color: "#f97316", label: "Adventure" },
+  narrative: { emoji: "📖",  color: "#a855f7", label: "Adventure" },
 };
 
 interface GameVersion {
@@ -316,11 +317,8 @@ export default function DashboardPage() {
               outline: "none",
             }}>
             <option value="all">ALL TYPES</option>
-            <option value="tactical">⚔️ Tactical</option>
-            <option value="trivia">🧠 Trivia</option>
-            <option value="word">📝 Word</option>
-            <option value="puzzle">🧩 Puzzle</option>
-            <option value="card">🃏 Card</option>
+            <option value="sandbox">🎮 Games &amp; Puzzles</option>
+            <option value="tactical">⚔️ WW2 Tactical</option>
             <option value="narrative">📖 Adventure</option>
           </select>
         </div>

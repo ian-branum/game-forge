@@ -6,9 +6,9 @@ import { useSession, signIn } from "next-auth/react";
 const CATEGORIES = [
   {
     id: "sandbox",
-    label: "Strategy",
+    label: "Games & Puzzles",
     emoji: "🎮",
-    desc: "Any board or card game — chess, checkers, Go, solitaire, or invent your own variant with custom pieces and rules.",
+    desc: "Any board, card, or puzzle game — chess, checkers, Go, solitaire, Sudoku, or invent your own with custom pieces and rules.",
     available: true,
   },
   {
@@ -113,7 +113,7 @@ export default function ForgePage() {
               category === "tactical"
                 ? "e.g. US Marines assault a Japanese-held Pacific island, 1944. Dense jungle, beach landing, pillboxes on the high ground..."
                 : category === "sandbox"
-                ? "e.g. Chess on a 10×10 board with artillery pieces. Or: Solitaire. Or: Go. Describe any game or variant..."
+                ? "e.g. Chess on a 10×10 board with artillery pieces. Or: Klondike Solitaire. Or: Go. Or: Sudoku. Describe any game or variant..."
                 : selectedCategory.available
                 ? "Describe your game..."
                 : `${selectedCategory.label} — coming soon`

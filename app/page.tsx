@@ -18,9 +18,9 @@ const ENGINES = [
   {
     id: "sandbox",
     emoji: "🎮",
-    label: "Strategy",
+    label: "Games & Puzzles",
     color: "#4488ff",
-    desc: "Any board or card game — chess, checkers, Go, solitaire, or invent your own variant with custom pieces and rules. The AI generates a fully playable game from your description.",
+    desc: "Any board, card, or puzzle game — chess, checkers, Go, solitaire, Sudoku, or invent your own with custom pieces and rules. The AI generates a fully playable game from your description.",
   },
   {
     id: "tactical",
@@ -181,7 +181,7 @@ export default function LandingPage() {
             {/* Strategy demos */}
             <div>
               <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: "#4488ff" }}>
-                🎮 STRATEGY
+                🎮 GAMES & PUZZLES
               </div>
               <div className="space-y-2">
                 {demos?.sandbox?.length ? demos.sandbox.map(s => (
