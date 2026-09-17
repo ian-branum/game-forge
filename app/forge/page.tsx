@@ -3,14 +3,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 
-const CATEGORIES = [
-  { id: "tactical",  label: "Tactical",   emoji: "⚔️",  desc: "Hex-based squad combat",       available: true },
-  { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Quiz on any topic",             available: true },
-  { id: "word",      label: "Word",        emoji: "📝",  desc: "Word search puzzles",           available: true },
-  { id: "sandbox",   label: "Custom",      emoji: "🎮",  desc: "AI-made game, any variant",     available: true },
-  { id: "card",      label: "Card",        emoji: "🃏",  desc: "Solitaire card games",          available: true },
-  { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: true },
+// Top row: active game types
+const PRIMARY_CATEGORIES = [
+  { id: "sandbox",   label: "Strategy",    emoji: "🎮",  desc: "Any board or card game",        available: true  },
+  { id: "tactical",  label: "WW2 Tactical",emoji: "⚔️",  desc: "Hex-based squad combat",        available: true  },
+  { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: false },
 ] as const;
+
+// Bottom row: legacy types, disabled
+const LEGACY_CATEGORIES = [
+  { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Coming soon",                   available: false },
+  { id: "word",      label: "Word",        emoji: "📝",  desc: "Coming soon",                   available: false },
+  { id: "card",      label: "Card",        emoji: "🃏",  desc: "Coming soon",                   available: false },
+] as const;
+
+const CATEGORIES = [...PRIMARY_CATEGORIES, ...LEGACY_CATEGORIES];
 
 type CategoryId = typeof CATEGORIES[number]["id"];
 
@@ -18,7 +25,7 @@ export default function ForgePage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
-  const [category, setCategory] = useState<CategoryId>("tactical");
+  const [category, setCategory] = useState<CategoryId>("sandbox");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
 
@@ -64,32 +71,47 @@ export default function ForgePage() {
             Describe any scenario. AI builds a unique game just for you.
           </p>
           <p className="text-gray-700 text-xs">
-            💡 Pick <span className="text-gray-500">Custom 🎮</span> to generate any board game — chess, checkers,
-            or a 10×10 variant with custom pieces. Or try the{" "}
-            <a href="/play/othello-demo" className="underline hover:text-gray-500">demo games</a>.
+            💡 <span className="text-gray-500">Strategy</span> generates any board or card game — chess, checkers, Go, solitaire, or any custom variant. Or try the{" "}
+            <a href="/play/normandy-demo" className="underline hover:text-gray-500">demo games</a>.
           </p>
         </div>
 
         {/* Category picker */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          {CATEGORIES.map(c => (
-            <button
-              key={c.id}
-              onClick={() => c.available && setCategory(c.id)}
-              disabled={!c.available}
-              className={`flex flex-col items-center p-3 rounded-lg border transition text-sm relative
-                ${!c.available ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
-                ${category === c.id
-                  ? "border-indigo-500 bg-indigo-900/40 text-white"
-                  : c.available ? "border-gray-700 bg-gray-900/30 text-gray-400 hover:border-gray-500" : "border-gray-800 bg-gray-900/10 text-gray-600"}`}>
-              <span className="text-2xl mb-1">{c.emoji}</span>
-              <span className="font-orbitron text-xs font-bold">{c.label}</span>
-              <span className="text-xs text-gray-500 mt-0.5">{c.desc}</span>
-              {!c.available && (
-                <span className="absolute top-1 right-1.5 text-[9px] font-orbitron text-gray-600">SOON</span>
-              )}
-            </button>
-          ))}
+        <div className="mb-6 space-y-2">
+          {/* Top row — active types */}
+          <div className="grid grid-cols-3 gap-2">
+            {PRIMARY_CATEGORIES.map(c => (
+              <button
+                key={c.id}
+                onClick={() => c.available && setCategory(c.id)}
+                disabled={!c.available}
+                className={`flex flex-col items-center p-3 rounded-lg border transition text-sm relative
+                  ${!c.available ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
+                  ${category === c.id
+                    ? "border-indigo-500 bg-indigo-900/40 text-white"
+                    : c.available ? "border-gray-700 bg-gray-900/30 text-gray-400 hover:border-gray-500" : "border-gray-800 bg-gray-900/10 text-gray-600"}`}>
+                <span className="text-2xl mb-1">{c.emoji}</span>
+                <span className="font-orbitron text-xs font-bold">{c.label}</span>
+                <span className="text-xs text-gray-500 mt-0.5">{c.desc}</span>
+                {!c.available && (
+                  <span className="absolute top-1 right-1.5 text-[9px] font-orbitron text-gray-600">SOON</span>
+                )}
+              </button>
+            ))}
+          </div>
+          {/* Bottom row — legacy/coming soon */}
+          <div className="grid grid-cols-3 gap-2 opacity-40">
+            {LEGACY_CATEGORIES.map(c => (
+              <button
+                key={c.id}
+                disabled
+                className="flex flex-col items-center p-2 rounded-lg border border-gray-800 bg-gray-900/10 text-gray-600 cursor-not-allowed relative text-sm">
+                <span className="text-xl mb-0.5">{c.emoji}</span>
+                <span className="font-orbitron text-xs font-bold">{c.label}</span>
+                <span className="text-[10px] text-gray-700 mt-0.5">{c.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Prompt input */}
@@ -100,9 +122,11 @@ export default function ForgePage() {
             placeholder={
               category === "tactical"
                 ? "e.g. US Marines assault a Japanese-held Pacific island, 1944. Dense jungle, beach landing, pillboxes on the high ground..."
+                : category === "sandbox"
+                ? "e.g. Chess on a 10×10 board with artillery pieces. Or: Solitaire. Or: Go. Describe any game or variant..."
                 : selectedCategory.available
                 ? "Describe your game..."
-                : `${selectedCategory.label} games coming soon...`
+                : `${selectedCategory.label} — coming soon`
             }
             value={prompt}
             disabled={!selectedCategory.available}
