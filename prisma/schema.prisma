@@ -72,6 +72,8 @@ model Scenario {
   priceToClone    Int      @default(0)
   activeVersionId String?
 
+  isDemo        Boolean  @default(false)
+
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   versions      GameVersion[]
   activeVersion GameVersion?  @relation("ScenarioActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
