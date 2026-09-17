@@ -53,10 +53,17 @@ export async function POST(
     `[Modification]: ${modificationPrompt}`,
   ].join("\n");
 
-  // Run the generator via the plugin registry
+  // Run the generator via the plugin registry. Sandbox games need the existing
+  // HTML fed back to the model (not just the chained text prompts).
   let payload: unknown;
   try {
-    payload = await serverPlugin.generate(chainedPrompt);
+    if (scenario.category === "sandbox") {
+      const { modifySandboxScenario } = await import("@/games/sandbox/generator");
+      const existingHtml = (scenario.payload as unknown as { html?: string } | null)?.html ?? "";
+      payload = await modifySandboxScenario(existingHtml, modificationPrompt);
+    } else {
+      payload = await serverPlugin.generate(chainedPrompt);
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;

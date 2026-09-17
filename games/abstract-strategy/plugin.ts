@@ -13,7 +13,7 @@ export const abstractStrategyPlugin: ServerPlugin<AbstractStrategyScenario> = {
     color: "#a855f7",
     creditCost: 2,
     schemaVersion: "1.0",
-    available: true,
+    available: false,
     supportedProfiles: [
       { interaction: "opposed", turnModel: "turn-based", runtimeIntelligence: "search-based" },   // algorithmic
       { interaction: "opposed", turnModel: "turn-based", runtimeIntelligence: "generative" },     // llm-opponent

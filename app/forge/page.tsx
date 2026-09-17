@@ -7,7 +7,7 @@ const CATEGORIES = [
   { id: "tactical",  label: "Tactical",   emoji: "⚔️",  desc: "Hex-based squad combat",       available: true },
   { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Quiz on any topic",             available: true },
   { id: "word",      label: "Word",        emoji: "📝",  desc: "Word search puzzles",           available: true },
-  { id: "abstract-strategy", label: "Strategy", emoji: "♟️", desc: "Classic strategy vs AI",    available: true },
+  { id: "sandbox",   label: "Custom",      emoji: "🎮",  desc: "AI-made game, any variant",     available: true },
   { id: "card",      label: "Card",        emoji: "🃏",  desc: "Solitaire card games",          available: true },
   { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: true },
 ] as const;
@@ -64,8 +64,9 @@ export default function ForgePage() {
             Describe any scenario. AI builds a unique game just for you.
           </p>
           <p className="text-gray-700 text-xs">
-            💡 This generates <em>new</em> games from your prompt — not classic games like Chess or Othello.
-            For those, try the <a href="/play/othello-demo" className="underline hover:text-gray-500">demo games</a>.
+            💡 Pick <span className="text-gray-500">Custom 🎮</span> to generate any board game — chess, checkers,
+            or a 10×10 variant with custom pieces. Or try the{" "}
+            <a href="/play/othello-demo" className="underline hover:text-gray-500">demo games</a>.
           </p>
         </div>
 

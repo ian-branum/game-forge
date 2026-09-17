@@ -10,6 +10,7 @@ const LEGACY_COSTS: Record<string, number> = {
   puzzle:    1,
   card:      2,
   narrative: 4,
+  sandbox:   3,
 };
 
 export async function POST(req: NextRequest) {
@@ -106,6 +107,11 @@ export async function POST(req: NextRequest) {
       }
       case "narrative": {
         const p = getServerPlugin("narrative");
+        if (p) payload = await p.generate(prompt);
+        break;
+      }
+      case "sandbox": {
+        const p = getServerPlugin("sandbox");
         if (p) payload = await p.generate(prompt);
         break;
       }

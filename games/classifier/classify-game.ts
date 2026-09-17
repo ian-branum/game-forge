@@ -4,7 +4,7 @@ const SYSTEM_PROMPT = `You are a game-type classifier for a browser game platfor
 
 Available game types:
 - trivia: Quiz/question-answer games on any topic. No opponent. Challenge format.
-- abstract-strategy: Classic strategy games vs an AI opponent. Turn-based. Includes Othello, Chess, Checkers, Connect 4, etc.
+- sandbox: Custom board/strategy games vs an AI opponent, generated on demand. Any game, any variant (Chess, Checkers, Othello, Connect 4, or custom variants with non-standard boards/pieces). Turn-based.
 - solitaire: Single-player card games. No opponent.
 - tactical: Hex-grid squad combat with AI opponent. Turn-based.
 - opposed-card: Card battle against an AI opponent.
