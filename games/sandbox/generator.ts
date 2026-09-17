@@ -2,32 +2,56 @@ import { SandboxScenario, SandboxScenarioSchema } from "./schema";
 
 const SYSTEM_PROMPT = `You are a world-class browser game developer. Generate a complete, self-contained HTML file for the requested game.
 
-REQUIREMENTS:
-- Single HTML file. All CSS and JavaScript inline. No external dependencies except Google Fonts.
-- Google Fonts allowed: import Orbitron via @import in <style> tag.
-- Dark theme: background #05071a, primary text #e2e8f0, accent glow #4488ff.
-- Use Orbitron font for headings, titles, scores.
-- Game canvas or DOM-based board. Responsive — works on mobile and desktop.
-- Include an AI/computer opponent where applicable (minimax for simple games, heuristic for complex ones).
-- Game must be fully playable: win/lose/draw detection, restart button, score display.
-- Glowing visual effects via box-shadow and text-shadow where appropriate.
-- Mobile touch controls where applicable (buttons ≥ 44px).
-- Clean, modern aesthetic. No browser alerts — use in-page status messages.
-- Output ONLY the raw HTML. No markdown. No explanation. No code fences.`;
+CRITICAL OUTPUT RULE: Output ONLY the raw HTML document, starting with <!DOCTYPE html>. Absolutely no preamble, explanation, markdown, or code fences. The very first character of your response must be '<'.
+
+LAYOUT — follow this exactly:
+- <body> uses flexbox column: display:flex; flex-direction:column; align-items:center; justify-content:flex-start; min-height:100vh; margin:0; padding:16px; box-sizing:border-box;
+- Section order (top to bottom, all centered):
+  1. TITLE — large Orbitron heading with glow, score/status line below it
+  2. GAME BOARD — canvas or grid, centered, max-width fits viewport
+  3. CONTROLS — restart/undo buttons, centered
+  4. INSTRUCTIONS — short paragraph(s), centered, max-width 600px, smaller font
+
+STYLE REQUIREMENTS:
+- Background: #05071a (full page). Primary text: #e2e8f0.
+- Orbitron font (import via @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap')).
+- Accent glow color: #4488ff. Use box-shadow and text-shadow for glow effects.
+- Buttons: min-height 44px, Orbitron font, dark bg with blue glow border.
+- No horizontal scrollbar. Game must fit within 100vw at all screen sizes.
+- Status messages in-page only — no browser alerts or confirm() dialogs.
+
+GAME REQUIREMENTS:
+- Fully playable: win/lose/draw detection, restart, score display.
+- AI/computer opponent where applicable (minimax for simple games, heuristic for complex).
+- Touch-friendly (tap targets ≥ 44px on mobile).
+- Include a <title> tag with the game name and a <meta name="description"> tag.`;
+
 
 const MODEL = "deepseek-v4-flash";
 const MAX_TOKENS = 16000;
 const TEMPERATURE = 0.5;
 
-/** Strip leading/trailing markdown code fences (```html ... ``` / ``` ... ```) from model output. */
+/** Strip preamble text and markdown code fences; extract raw HTML starting with <!DOCTYPE or <html. */
 function stripFences(text: string): string {
-  let out = text.trim();
-  // Full-document fence
-  const full = out.match(/^```[a-zA-Z0-9]*\s*\n([\s\S]*?)\n?```$/);
-  if (full) return full[1].trim();
-  // Fallback: remove any leading/trailing fence markers
-  out = out.replace(/^```[a-zA-Z0-9]*\s*\n?/, "").replace(/\n?```\s*$/, "");
-  return out.trim();
+  const out = text.trim();
+
+  // If there's a ```html or ``` fence, extract content between the first opening and last closing fence.
+  const fenceOpen = out.search(/```[a-zA-Z0-9]*\s*\n/);
+  if (fenceOpen !== -1) {
+    const afterOpen = out.slice(fenceOpen).replace(/^```[a-zA-Z0-9]*\s*\n/, "");
+    const fenceClose = afterOpen.lastIndexOf("```");
+    const inner = fenceClose !== -1 ? afterOpen.slice(0, fenceClose) : afterOpen;
+    return inner.trim();
+  }
+
+  // No fences: find the first < to discard any leading preamble text.
+  const htmlStart = out.indexOf("<!DOCTYPE");
+  if (htmlStart !== -1) return out.slice(htmlStart).trim();
+  const htmlTagStart = out.indexOf("<html");
+  if (htmlTagStart !== -1) return out.slice(htmlTagStart).trim();
+
+  // Last resort: return as-is
+  return out;
 }
 
 /** Extract the document title from the <title> tag, falling back to the prompt. */
