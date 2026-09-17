@@ -456,16 +456,6 @@ export default function DashboardPage() {
         </button>
 
         <div className="flex-1" />
-
-        <Link href="/forge"
-          className="flex items-center gap-2 px-5 py-2 rounded-xl font-orbitron font-black text-xs tracking-widest transition-all hover:scale-[1.02] flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
-          ⚡ NEW GAME
-        </Link>
-
-        <span className="font-orbitron text-xs tracking-widest flex-shrink-0" style={{ color: "#ffd700" }}>
-          ⚡ {(session?.user as { credits?: number })?.credits ?? "?"} credits
-        </span>
       </div>
 
       {/* ── Game table ─────────────────────────────────────────────────── */}
@@ -571,7 +561,7 @@ export default function DashboardPage() {
                         <button
                           onClick={() => setModalScenario(s)}
                           className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                          style={{ background: "#4488ff11", border: "1px solid #4488ff44", color: "#4488ff" }}>
+                          style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
                           ✏ MODIFY
                         </button>
 
@@ -581,17 +571,15 @@ export default function DashboardPage() {
                             onClick={e => handleArchive(e, s.id)}
                             disabled={archiving === s.id}
                             title={filterView === "archived" ? "Restore" : "Archive"}
-                            className="font-orbitron text-[10px] tracking-widest px-2 py-1.5 rounded-lg transition"
+                            className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
                             style={{
-                              background: "transparent",
-                              border: `1px solid ${filterView === "archived" ? "#34d39922" : "#ef444422"}`,
-                              color: filterView === "archived" ? "#34d399" : "#ef4444",
-                              opacity: archiving === s.id ? 0.3 : 0.5,
+                              background: `${m.color}22`,
+                              border: `1px solid ${m.color}55`,
+                              color: m.color,
+                              opacity: archiving === s.id ? 0.4 : 1,
                               cursor: archiving === s.id ? "not-allowed" : "pointer",
-                            }}
-                            onMouseEnter={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                            onMouseLeave={e => { if (archiving !== s.id) (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; }}>
-                            {archiving === s.id ? "…" : filterView === "archived" ? "↩" : "🗄"}
+                            }}>
+                            {archiving === s.id ? "…" : filterView === "archived" ? "↩ RESTORE" : "🗄 ARCHIVE"}
                           </button>
                         )}
                       </div>
