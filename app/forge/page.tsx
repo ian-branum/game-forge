@@ -3,21 +3,29 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 
-// Top row: active game types
-const PRIMARY_CATEGORIES = [
-  { id: "sandbox",   label: "Strategy",    emoji: "🎮",  desc: "Any board or card game",        available: true  },
-  { id: "tactical",  label: "WW2 Tactical",emoji: "⚔️",  desc: "Hex-based squad combat",        available: true  },
-  { id: "narrative", label: "Adventure",   emoji: "📖",  desc: "Branching text adventure",      available: false },
+const CATEGORIES = [
+  {
+    id: "sandbox",
+    label: "Strategy",
+    emoji: "🎮",
+    desc: "Any board or card game — chess, checkers, Go, solitaire, or invent your own variant with custom pieces and rules.",
+    available: true,
+  },
+  {
+    id: "tactical",
+    label: "WW2 Tactical",
+    emoji: "⚔️",
+    desc: "Hex-based squad combat with line-of-sight, morale, and authentic WW2 scenarios. Describe the battle, AI sets the stage.",
+    available: true,
+  },
+  {
+    id: "narrative",
+    label: "Adventure",
+    emoji: "📖",
+    desc: "Branching narrative adventures with an AI opponent that responds to your choices. Coming soon.",
+    available: false,
+  },
 ] as const;
-
-// Bottom row: legacy types, disabled
-const LEGACY_CATEGORIES = [
-  { id: "trivia",    label: "Trivia",      emoji: "🧠",  desc: "Coming soon",                   available: false },
-  { id: "word",      label: "Word",        emoji: "📝",  desc: "Coming soon",                   available: false },
-  { id: "card",      label: "Card",        emoji: "🃏",  desc: "Coming soon",                   available: false },
-] as const;
-
-const CATEGORIES = [...PRIMARY_CATEGORIES, ...LEGACY_CATEGORIES];
 
 type CategoryId = typeof CATEGORIES[number]["id"];
 
@@ -64,54 +72,36 @@ export default function ForgePage() {
       <div className="w-full max-w-xl">
         <div className="text-center mb-10">
           <div className="font-orbitron text-xs tracking-[0.4em] text-gray-600 mb-3">NEW GAME</div>
-          <h1 className="font-orbitron font-black text-3xl tracking-widest text-white mb-2">
+          <h1 className="font-orbitron font-black text-3xl tracking-widest text-white mb-3">
             FORGE A GAME
           </h1>
-          <p className="text-gray-500 text-sm mb-2">
-            Describe any scenario. AI builds a unique game just for you.
-          </p>
-          <p className="text-gray-700 text-xs">
-            💡 <span className="text-gray-500">Strategy</span> generates any board or card game — chess, checkers, Go, solitaire, or any custom variant. Or try the{" "}
-            <a href="/play/normandy-demo" className="underline hover:text-gray-500">demo games</a>.
+          <p className="text-gray-500 text-sm">
+            Describe your game. AI builds a unique game just for you.
           </p>
         </div>
 
         {/* Category picker */}
-        <div className="mb-6 space-y-2">
-          {/* Top row — active types */}
-          <div className="grid grid-cols-3 gap-2">
-            {PRIMARY_CATEGORIES.map(c => (
-              <button
-                key={c.id}
-                onClick={() => c.available && setCategory(c.id)}
-                disabled={!c.available}
-                className={`flex flex-col items-center p-3 rounded-lg border transition text-sm relative
-                  ${!c.available ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
-                  ${category === c.id
-                    ? "border-indigo-500 bg-indigo-900/40 text-white"
-                    : c.available ? "border-gray-700 bg-gray-900/30 text-gray-400 hover:border-gray-500" : "border-gray-800 bg-gray-900/10 text-gray-600"}`}>
-                <span className="text-2xl mb-1">{c.emoji}</span>
-                <span className="font-orbitron text-xs font-bold">{c.label}</span>
-                <span className="text-xs text-gray-500 mt-0.5">{c.desc}</span>
-                {!c.available && (
-                  <span className="absolute top-1 right-1.5 text-[9px] font-orbitron text-gray-600">SOON</span>
-                )}
-              </button>
-            ))}
-          </div>
-          {/* Bottom row — legacy/coming soon */}
-          <div className="grid grid-cols-3 gap-2 opacity-40">
-            {LEGACY_CATEGORIES.map(c => (
-              <button
-                key={c.id}
-                disabled
-                className="flex flex-col items-center p-2 rounded-lg border border-gray-800 bg-gray-900/10 text-gray-600 cursor-not-allowed relative text-sm">
-                <span className="text-xl mb-0.5">{c.emoji}</span>
-                <span className="font-orbitron text-xs font-bold">{c.label}</span>
-                <span className="text-[10px] text-gray-700 mt-0.5">{c.desc}</span>
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.id}
+              onClick={() => c.available && setCategory(c.id)}
+              disabled={!c.available}
+              className={`flex flex-col items-start p-4 rounded-xl border transition relative
+                ${!c.available ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
+                ${category === c.id
+                  ? "border-indigo-500 bg-indigo-900/40 text-white"
+                  : c.available
+                    ? "border-gray-700 bg-gray-900/30 text-gray-400 hover:border-gray-500"
+                    : "border-gray-800 bg-gray-900/10 text-gray-600"}`}>
+              <span className="text-3xl mb-3">{c.emoji}</span>
+              <span className="font-orbitron text-xs font-bold text-left mb-2 leading-snug">{c.label}</span>
+              <span className="text-xs text-gray-500 text-left leading-relaxed">{c.desc}</span>
+              {!c.available && (
+                <span className="absolute top-2 right-2.5 text-[9px] font-orbitron text-gray-600 tracking-widest">SOON</span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Prompt input */}
@@ -157,24 +147,7 @@ export default function ForgePage() {
           </p>
         </div>
 
-        {/* Demo link */}
-        <div className="mt-10 pt-8 border-t text-center" style={{ borderColor: "#1e2a4a" }}>
-          <p className="text-gray-600 text-xs mb-3 font-orbitron tracking-widest">OR TRY A DEMO</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <a
-              href="/play/normandy-demo"
-              className="inline-block px-6 py-2 rounded-lg text-sm font-orbitron tracking-widest transition hover:opacity-80"
-              style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#4488ff88" }}>
-              ⚔️ Normandy Demo
-            </a>
-            <a
-              href="/play/othello-demo"
-              className="inline-block px-6 py-2 rounded-lg text-sm font-orbitron tracking-widest transition hover:opacity-80"
-              style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#4488ff88" }}>
-              ♟️ Othello Demo
-            </a>
-          </div>
-        </div>
+
       </div>
     </main>
   );
