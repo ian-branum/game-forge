@@ -428,20 +428,20 @@ export default function DashboardPage() {
     <div className="min-h-[calc(100vh-56px)]" style={{ background: "#05071a" }}>
 
       {/* ── Top bar ────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 px-6 py-3 border-b flex items-center gap-4 flex-wrap"
+      <div className="sticky top-0 z-10 px-6 py-3 border-b flex items-center gap-3 flex-wrap"
         style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
 
-        <Link href="/forge"
-          className="flex items-center gap-2 px-5 py-2 rounded-xl font-orbitron font-black text-xs tracking-widest transition-all hover:scale-[1.02] flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
-          ⚡ NEW GAME
-        </Link>
-
-        <span className="font-orbitron text-xs tracking-widest flex-shrink-0" style={{ color: "#ffd700" }}>
-          ⚡ {(session?.user as { credits?: number })?.credits ?? "?"} credits
-        </span>
-
-        <div className="flex-1" />
+        {/* Category filter */}
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
+          style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
+          <option value="all">ALL TYPES</option>
+          <option value="sandbox">🎮 Games &amp; Puzzles</option>
+          <option value="tactical">⚔️ WW2 Tactical</option>
+          <option value="narrative">📖 Adventure</option>
+        </select>
 
         {/* View filter */}
         <button
@@ -455,17 +455,17 @@ export default function DashboardPage() {
           {filterView === "mine" ? "👤 MY GAMES" : filterView === "archived" ? "📦 ARCHIVED" : "🌐 ALL GAMES"}
         </button>
 
-        {/* Category filter */}
-        <select
-          value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
-          className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
-          style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
-          <option value="all">ALL TYPES</option>
-          <option value="sandbox">🎮 Games &amp; Puzzles</option>
-          <option value="tactical">⚔️ WW2 Tactical</option>
-          <option value="narrative">📖 Adventure</option>
-        </select>
+        <div className="flex-1" />
+
+        <Link href="/forge"
+          className="flex items-center gap-2 px-5 py-2 rounded-xl font-orbitron font-black text-xs tracking-widest transition-all hover:scale-[1.02] flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
+          ⚡ NEW GAME
+        </Link>
+
+        <span className="font-orbitron text-xs tracking-widest flex-shrink-0" style={{ color: "#ffd700" }}>
+          ⚡ {(session?.user as { credits?: number })?.credits ?? "?"} credits
+        </span>
       </div>
 
       {/* ── Game table ─────────────────────────────────────────────────── */}
