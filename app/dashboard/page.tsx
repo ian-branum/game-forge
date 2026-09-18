@@ -26,6 +26,8 @@ interface ScenarioSummary {
   id: string;
   userId: string;
   title: string;
+  description: string | null;
+  creator: string;
   category: string;
   prompt: string;
   isPublic: boolean;
@@ -35,6 +37,21 @@ interface ScenarioSummary {
   versions: GameVersion[];
   createdAt: string;
 }
+
+const inputStyle: React.CSSProperties = {
+  background: "#0a1128",
+  border: "1px solid #1e2a4a",
+  color: "#e5e7eb",
+  borderRadius: "0.5rem",
+  padding: "0.5rem",
+  fontFamily: "inherit",
+  fontSize: "0.875rem",
+  outline: "none",
+  width: "100%",
+};
+
+const PILL_ACTIVE = { background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" };
+const PILL_INACTIVE = { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" };
 
 // ─── Modify Modal ────────────────────────────────────────────────────────────
 
@@ -57,6 +74,12 @@ function ModifyModal({
   const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
   const [settingActiveId, setSettingActiveId] = useState<string | null>(null);
 
+  // Editable title / description
+  const [title, setTitle] = useState(scenario.title);
+  const [description, setDescription] = useState(scenario.description ?? "");
+  const [detailsSaved, setDetailsSaved] = useState(false);
+  const detailsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [modifyPrompt, setModifyPrompt] = useState("");
   const [modifying, setModifying] = useState(false);
   const [modifyError, setModifyError] = useState("");
@@ -78,6 +101,37 @@ function ModifyModal({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  const flashDetailsSaved = () => {
+    setDetailsSaved(true);
+    if (detailsTimer.current) clearTimeout(detailsTimer.current);
+    detailsTimer.current = setTimeout(() => setDetailsSaved(false), 2000);
+  };
+
+  const handleDetailsBlur = async () => {
+    if (!isOwner) return;
+    const trimmedTitle = title.trim();
+    const trimmedDesc = description.trim();
+    const payload: { title?: string; description?: string } = {};
+    if (trimmedTitle !== scenario.title && trimmedTitle.length >= 1) payload.title = trimmedTitle;
+    if (trimmedDesc !== (scenario.description ?? "")) payload.description = trimmedDesc;
+    if (Object.keys(payload).length === 0) return;
+
+    const res = await fetch(`/api/scenarios/${scenario.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { title?: string; description?: string | null };
+      const nextTitle = data.title ?? trimmedTitle;
+      const nextDescription = data.description ?? null;
+      setTitle(nextTitle);
+      setDescription(nextDescription ?? "");
+      flashDetailsSaved();
+      onModified({ ...scenario, title: nextTitle, description: nextDescription });
+    }
+  };
 
   const handleShare = () => {
     const url = `${window.location.origin}/play/${scenario.id}`;
@@ -117,7 +171,7 @@ function ModifyModal({
         const updated = [...versions, newVersion];
         setVersions(updated);
         setActiveVersionId(newVersion.id);
-        onModified({ ...scenario, activeVersionId: newVersion.id, versions: updated, isPublic });
+        onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic });
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -183,12 +237,12 @@ function ModifyModal({
         {/* Modal header */}
         <div className="px-6 py-4 border-b flex items-start justify-between gap-4 flex-shrink-0"
           style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xl">{meta.emoji}</span>
               <span className="font-orbitron text-xs tracking-widest" style={{ color: meta.color }}>{meta.label}</span>
             </div>
-            <h2 className="font-orbitron font-black text-xl text-white">{scenario.title}</h2>
+            <h2 className="font-orbitron font-black text-xl text-white truncate">{title || scenario.title}</h2>
             <p className="text-gray-600 text-xs mt-1">
               Forged {new Date(scenario.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
@@ -235,8 +289,44 @@ function ModifyModal({
         {/* Modal body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-          {/* Original prompt */}
+          {/* Editable title + description */}
           <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-orbitron text-xs tracking-widest" style={{ color: meta.color }}>DETAILS</div>
+              <span className="font-orbitron text-[10px] tracking-widest" style={{ color: "#22c55e", opacity: detailsSaved ? 1 : 0, transition: "opacity 0.3s" }}>✓ SAVED</span>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">TITLE</label>
+                <input
+                  type="text"
+                  value={title}
+                  readOnly={!isOwner}
+                  onChange={e => setTitle(e.target.value)}
+                  onBlur={handleDetailsBlur}
+                  className="w-full"
+                  style={{ ...inputStyle, opacity: isOwner ? 1 : 0.7 }}
+                />
+              </div>
+              <div>
+                <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">DESCRIPTION</label>
+                <textarea
+                  rows={2}
+                  value={description}
+                  readOnly={!isOwner}
+                  onChange={e => setDescription(e.target.value)}
+                  onBlur={handleDetailsBlur}
+                  placeholder="No description yet."
+                  className="w-full resize-y"
+                  style={{ ...inputStyle, opacity: isOwner ? 1 : 0.7 }}
+                />
+                <p className="text-gray-600 text-xs mt-1">Shown to other players in the marketplace</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Original prompt */}
+          <div className="border-t pt-4" style={{ borderColor: "#1e2a4a" }}>
             <div className="font-orbitron text-[10px] tracking-widest text-gray-500 mb-1">ORIGINAL PROMPT</div>
             <p className="text-gray-300 text-sm leading-relaxed italic">&ldquo;{scenario.prompt}&rdquo;</p>
           </div>
@@ -310,7 +400,7 @@ function ModifyModal({
                 onChange={e => setModifyPrompt(e.target.value)}
                 placeholder="Describe what to change about this game…"
                 className="w-full resize-y"
-                style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#e5e7eb", borderRadius: "0.5rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.875rem", outline: "none" }}
+                style={{ ...inputStyle }}
               />
               <div className="flex items-center justify-end gap-3 mt-2">
                 {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
@@ -336,12 +426,12 @@ function ModifyModal({
                 <div className="flex-1">
                   <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO PLAY</label>
                   <input type="number" min={0} value={priceToPlay} onChange={e => setPriceToPlay(Number(e.target.value))} onBlur={handlePricingBlur}
-                    className="w-full" style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#e5e7eb", borderRadius: "0.5rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.875rem", outline: "none" }} />
+                    className="w-full" style={{ ...inputStyle }} />
                 </div>
                 <div className="flex-1">
                   <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO CLONE</label>
                   <input type="number" min={0} value={priceToClone} onChange={e => setPriceToClone(Number(e.target.value))} onBlur={handlePricingBlur}
-                    className="w-full" style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#e5e7eb", borderRadius: "0.5rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.875rem", outline: "none" }} />
+                    className="w-full" style={{ ...inputStyle }} />
                 </div>
               </div>
             </div>
@@ -364,6 +454,8 @@ function ModifyModal({
 
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
+type Tab = "mine" | "marketplace";
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -371,7 +463,8 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [filterView, setFilterView] = useState<"all" | "mine" | "archived">("all");
+  const [activeTab, setActiveTab] = useState<Tab>("mine");
+  const [archivedView, setArchivedView] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [archiving, setArchiving] = useState<string | null>(null);
   const [modalScenario, setModalScenario] = useState<ScenarioSummary | null>(null);
@@ -384,8 +477,7 @@ export default function DashboardPage() {
     if (status !== "authenticated") return;
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterView === "mine") params.set("mine", "true");
-    if (filterView === "archived") params.set("archived", "true");
+    if (archivedView) params.set("archived", "true");
     if (filterCategory !== "all") params.set("category", filterCategory);
     fetch(`/api/scenarios?${params}`)
       .then(r => r.json())
@@ -395,7 +487,7 @@ export default function DashboardPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [status, filterView, filterCategory]);
+  }, [status, archivedView, filterCategory]);
 
   useEffect(() => { loadScenarios(); }, [loadScenarios]);
 
@@ -427,170 +519,220 @@ export default function DashboardPage() {
   return (
     <div className="min-h-[calc(100vh-56px)]" style={{ background: "#05071a" }}>
 
-      {/* ── Top bar ────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 px-6 py-3 border-b flex items-center gap-3 flex-wrap"
-        style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+      {/* ── Tabs + filters ─────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-10 border-b" style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+        {/* Pill tabs */}
+        <div className="px-6 pt-3 pb-2 flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("mine")}
+            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+            style={activeTab === "mine" ? PILL_ACTIVE : PILL_INACTIVE}>
+            MY GAMES
+          </button>
+          <button
+            onClick={() => setActiveTab("marketplace")}
+            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+            style={activeTab === "marketplace" ? PILL_ACTIVE : PILL_INACTIVE}>
+            MARKETPLACE
+          </button>
+        </div>
 
-        {/* Category filter */}
-        <select
-          value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
-          className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
-          style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
-          <option value="all">ALL TYPES</option>
-          <option value="sandbox">🎮 Games &amp; Puzzles</option>
-          <option value="tactical">⚔️ WW2 Tactical</option>
-          <option value="narrative">📖 Adventure</option>
-        </select>
+        {/* Filters (My Games only) */}
+        {activeTab === "mine" && (
+          <div className="px-6 pb-3 flex items-center gap-3 flex-wrap">
+            {/* Category filter */}
+            <select
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
+              className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
+              style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
+              <option value="all">ALL TYPES</option>
+              <option value="sandbox">🎮 Games &amp; Puzzles</option>
+              <option value="tactical">⚔️ WW2 Tactical</option>
+              <option value="narrative">📖 Adventure</option>
+            </select>
 
-        {/* View filter */}
-        <button
-          onClick={() => setFilterView(v => v === "all" ? "mine" : v === "mine" ? "archived" : "all")}
-          className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition flex-shrink-0"
-          style={{
-            border: `1px solid ${filterView !== "all" ? "#4488ff66" : "#1e2a4a"}`,
-            background: filterView !== "all" ? "#4488ff11" : "transparent",
-            color: filterView === "archived" ? "#f59e0b" : filterView === "mine" ? "#4488ff" : "#6b7280",
-          }}>
-          {filterView === "mine" ? "👤 MY GAMES" : filterView === "archived" ? "📦 ARCHIVED" : "🌐 ALL GAMES"}
-        </button>
-
-        <div className="flex-1" />
-      </div>
-
-      {/* ── Game table ─────────────────────────────────────────────────── */}
-      <div className="px-6 py-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="font-orbitron text-xs text-gray-600 animate-pulse">LOADING...</div>
-          </div>
-        ) : scenarios.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
-            <div className="text-5xl">🎮</div>
-            <div className="font-orbitron text-gray-600 text-sm">
-              {filterView === "archived" ? "No archived games." : "No games found."}
+            {/* Active / Archived toggle */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setArchivedView(false)}
+                className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+                style={!archivedView
+                  ? { background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" }
+                  : PILL_INACTIVE}>
+                ACTIVE
+              </button>
+              <button
+                onClick={() => setArchivedView(true)}
+                className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+                style={archivedView
+                  ? { background: "#f59e0b22", border: "1px solid #f59e0b66", color: "#f59e0b" }
+                  : PILL_INACTIVE}>
+                ARCHIVED
+              </button>
             </div>
-            {filterView !== "archived" && (
-              <Link href="/forge"
-                className="mt-2 px-6 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
-                style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
-                ⚡ FORGE A GAME
-              </Link>
-            )}
+
+            <div className="flex-1" />
           </div>
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
-                {["TYPE", "TITLE", "PROMPT", "CREATED", "VERSIONS", "VISIBILITY", "ACTIONS"].map(h => (
-                  <th key={h} className="text-left pb-3 font-orbitron text-[10px] tracking-widest text-gray-600 pr-4 last:pr-0">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {scenarios.map(s => {
-                const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
-                const isOwnerOf = s.userId === currentUserId;
-                return (
-                  <tr
-                    key={s.id}
-                    className="border-b transition"
-                    style={{ borderColor: "#1e2a4a11" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#ffffff05")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-
-                    {/* Type */}
-                    <td className="py-3 pr-4 whitespace-nowrap">
-                      <span className="font-orbitron text-xs font-bold" style={{ color: m.color }}>
-                        {m.emoji} {m.label}
-                      </span>
-                    </td>
-
-                    {/* Title */}
-                    <td className="py-3 pr-4 max-w-[200px]">
-                      <span className="font-orbitron text-xs font-bold text-white truncate block">
-                        {s.title}
-                      </span>
-                    </td>
-
-                    {/* Prompt */}
-                    <td className="py-3 pr-4 max-w-xs">
-                      <span className="text-gray-500 text-xs italic truncate block">
-                        {s.prompt}
-                      </span>
-                    </td>
-
-                    {/* Created */}
-                    <td className="py-3 pr-4 whitespace-nowrap">
-                      <span className="text-gray-600 text-xs">
-                        {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                      </span>
-                    </td>
-
-                    {/* Versions */}
-                    <td className="py-3 pr-4 text-center">
-                      <span className="font-orbitron text-xs text-gray-500">
-                        {(s.versions?.length ?? 0) + 1}
-                      </span>
-                    </td>
-
-                    {/* Visibility */}
-                    <td className="py-3 pr-4 whitespace-nowrap">
-                      <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full"
-                        style={s.isPublic
-                          ? { background: "#22c55e11", border: "1px solid #22c55e44", color: "#22c55e" }
-                          : { background: "#6b728011", border: "1px solid #6b728033", color: "#6b7280" }}>
-                        {s.isPublic ? "🌐 PUBLIC" : "🔒 PRIVATE"}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {/* Play */}
-                        <Link
-                          href={`/play/${s.id}`}
-                          className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                          style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
-                          ▶ PLAY
-                        </Link>
-
-                        {/* Modify */}
-                        <button
-                          onClick={() => setModalScenario(s)}
-                          className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                          style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
-                          ✏ MODIFY
-                        </button>
-
-                        {/* Archive (owners only) */}
-                        {isOwnerOf && (
-                          <button
-                            onClick={e => handleArchive(e, s.id)}
-                            disabled={archiving === s.id}
-                            title={filterView === "archived" ? "Restore" : "Archive"}
-                            className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                            style={{
-                              background: `${m.color}22`,
-                              border: `1px solid ${m.color}55`,
-                              color: m.color,
-                              opacity: archiving === s.id ? 0.4 : 1,
-                              cursor: archiving === s.id ? "not-allowed" : "pointer",
-                            }}>
-                            {archiving === s.id ? "…" : filterView === "archived" ? "↩ RESTORE" : "🗄 ARCHIVE"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         )}
       </div>
+
+      {/* ── Content ────────────────────────────────────────────────────── */}
+      {activeTab === "marketplace" ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+          <div className="text-5xl">🏪</div>
+          <div className="font-orbitron text-gray-500 text-sm tracking-widest">MARKETPLACE</div>
+          <p className="text-gray-600 text-sm max-w-sm">
+            Coming Soon — discover and clone games forged by other players.
+          </p>
+        </div>
+      ) : (
+        <div className="px-6 py-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="font-orbitron text-xs text-gray-600 animate-pulse">LOADING...</div>
+            </div>
+          ) : scenarios.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+              <div className="text-5xl">🎮</div>
+              <div className="font-orbitron text-gray-600 text-sm">
+                {archivedView ? "No archived games." : "No games found."}
+              </div>
+              {!archivedView && (
+                <Link href="/forge"
+                  className="mt-2 px-6 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
+                  style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
+                  ⚡ FORGE A GAME
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
+                    {["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED", "VERSIONS", "VISIBILITY", "ACTIONS"].map(h => (
+                      <th key={h} className="text-left pb-3 font-orbitron text-[10px] tracking-widest text-gray-600 pr-4 last:pr-0 whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {scenarios.map(s => {
+                    const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
+                    const isOwnerOf = s.userId === currentUserId;
+                    return (
+                      <tr
+                        key={s.id}
+                        className="border-b transition"
+                        style={{ borderColor: "#1e2a4a11" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#ffffff05")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+
+                        {/* Type */}
+                        <td className="py-3 pr-4 whitespace-nowrap">
+                          <span className="font-orbitron text-xs font-bold" style={{ color: m.color }}>
+                            {m.emoji} {m.label}
+                          </span>
+                        </td>
+
+                        {/* Title */}
+                        <td className="py-3 pr-4 max-w-[180px]">
+                          <span className="font-orbitron text-xs font-bold text-white truncate block">
+                            {s.title}
+                          </span>
+                        </td>
+
+                        {/* Description */}
+                        <td className="py-3 pr-4 max-w-[240px]">
+                          {s.description ? (
+                            <span className="text-gray-500 text-xs italic truncate block">
+                              {s.description}
+                            </span>
+                          ) : (
+                            <span className="text-gray-700 text-xs">—</span>
+                          )}
+                        </td>
+
+                        {/* Creator */}
+                        <td className="py-3 pr-4 max-w-[120px]">
+                          <span className="text-gray-500 text-xs truncate block">
+                            {s.creator}
+                          </span>
+                        </td>
+
+                        {/* Created */}
+                        <td className="py-3 pr-4 whitespace-nowrap">
+                          <span className="text-gray-600 text-xs">
+                            {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        </td>
+
+                        {/* Versions */}
+                        <td className="py-3 pr-4 text-center">
+                          <span className="font-orbitron text-xs text-gray-500">
+                            {(s.versions?.length ?? 0) + 1}
+                          </span>
+                        </td>
+
+                        {/* Visibility */}
+                        <td className="py-3 pr-4 whitespace-nowrap">
+                          <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full"
+                            style={s.isPublic
+                              ? { background: "#22c55e11", border: "1px solid #22c55e44", color: "#22c55e" }
+                              : { background: "#6b728011", border: "1px solid #6b728033", color: "#6b7280" }}>
+                            {s.isPublic ? "🌐 PUBLIC" : "🔒 PRIVATE"}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {/* Play */}
+                            <Link
+                              href={`/play/${s.id}`}
+                              className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
+                              style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
+                              ▶ PLAY
+                            </Link>
+
+                            {/* Modify */}
+                            <button
+                              onClick={() => setModalScenario(s)}
+                              className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
+                              style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
+                              ✏ MODIFY
+                            </button>
+
+                            {/* Archive (owners only) */}
+                            {isOwnerOf && (
+                              <button
+                                onClick={e => handleArchive(e, s.id)}
+                                disabled={archiving === s.id}
+                                title={archivedView ? "Restore" : "Archive"}
+                                className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
+                                style={{
+                                  background: `${m.color}22`,
+                                  border: `1px solid ${m.color}55`,
+                                  color: m.color,
+                                  opacity: archiving === s.id ? 0.4 : 1,
+                                  cursor: archiving === s.id ? "not-allowed" : "pointer",
+                                }}>
+                                {archiving === s.id ? "…" : archivedView ? "↩ RESTORE" : "🗄 ARCHIVE"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Modify Modal ───────────────────────────────────────────────── */}
       {modalScenario && (

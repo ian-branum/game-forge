@@ -9,21 +9,22 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const mine = searchParams.get("mine") === "true";
   const archived = searchParams.get("archived") === "true";
   const category = searchParams.get("category"); // null = all
 
-  const scenarios = await prisma.scenario.findMany({
+  const rows = await prisma.scenario.findMany({
     where: {
-      ...(mine ? { userId: session.user.id } : {}),
+      // My Games is always scoped to the current user's own created scenarios.
+      userId: session.user.id,
       archived: archived ? true : false,
-      ...(category ? { category } : {}),
+      ...(category && category !== "all" ? { category } : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       userId: true,
       title: true,
+      description: true,
       category: true,
       prompt: true,
       isPublic: true,
@@ -34,9 +35,18 @@ export async function GET(req: NextRequest) {
         select: { id: true, versionNum: true, prompt: true, createdAt: true },
         orderBy: { versionNum: "asc" },
       },
+      user: {
+        select: { displayName: true, name: true },
+      },
       createdAt: true,
     },
   });
+
+  // Strip the raw user object; expose a resolved creator display name instead.
+  const scenarios = rows.map(({ user, ...rest }) => ({
+    ...rest,
+    creator: user?.displayName ?? user?.name ?? "Unknown",
+  }));
 
   return NextResponse.json({ scenarios, currentUserId: session.user.id });
 }

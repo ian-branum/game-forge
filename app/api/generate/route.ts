@@ -3,6 +3,56 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getServerPlugin } from "@/games/server-registry";
 
+const DESCRIPTION_MODEL = "deepseek-v4-flash";
+
+const DESCRIPTION_SYSTEM_PROMPT =
+  "You are a game curator. Write a single punchy sentence (max 120 characters) describing this game for a marketplace listing. No preamble, no quotes, just the sentence.";
+
+/**
+ * Generate a short, punchy marketplace description for a freshly forged game.
+ * Falls back to a truncated prompt if the model is unavailable or fails.
+ */
+async function generateDescription(prompt: string, title: string, gameType: string): Promise<string> {
+  const fallback = prompt.slice(0, 120) + (prompt.length > 120 ? "…" : "");
+
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return fallback;
+
+  try {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: DESCRIPTION_MODEL,
+        messages: [
+          { role: "system", content: DESCRIPTION_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Game type: ${gameType}. Title: "${title}". Created from prompt: "${prompt}"`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 80,
+        reasoning_effort: "none",
+      }),
+    });
+
+    if (!response.ok) return fallback;
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== "string") return fallback;
+
+    const text = content.trim().replace(/^["']+|["']+$/g, "").trim();
+    return text.length > 0 ? text.slice(0, 300) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -44,12 +94,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg, stack }, { status: 500 });
   }
 
+  const title = (payload as { title?: string }).title ?? "Untitled";
+  const description = await generateDescription(prompt, title, gameType);
+
   const [scenario] = await prisma.$transaction([
     prisma.scenario.create({
       data: {
         userId: session.user.id,
         category: gameType,
-        title: (payload as { title?: string }).title ?? "Untitled",
+        title,
+        description,
         prompt,
         payload: payload as object,
       },
