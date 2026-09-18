@@ -74,6 +74,7 @@ model Scenario {
   priceToClone    Int      @default(0)
   activeVersionId String?
 
+  description     String?
   isDemo        Boolean  @default(false)
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
