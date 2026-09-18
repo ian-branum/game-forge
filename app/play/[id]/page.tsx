@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getPlayerPlugin } from "@/games/player-registry";
+import TrialGate from "@/components/TrialGate";
 
 export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,5 +19,16 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
     ? { ...(row.payload as object), id: row.id }
     : row.payload;
 
-  return <Player scenario={payload} />;
+  // The gate POSTs to /api/play/[id]/start on mount and renders the game only
+  // once the server confirms the viewer is the owner, licensed, or within trial.
+  return (
+    <TrialGate
+      scenarioId={row.id}
+      title={row.title}
+      priceToPlay={row.priceToPlay}
+      priceToClone={row.priceToClone}
+      category={row.category}>
+      <Player scenario={payload} />
+    </TrialGate>
+  );
 }

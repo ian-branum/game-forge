@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
       priceToClone: true,
       activeVersionId: true,
       archived: true,
+      freePlayLimit: true,
+      adventureSubtype: true,
       versions: {
         select: { id: true, versionNum: true, prompt: true, createdAt: true },
         orderBy: { versionNum: "asc" },
