@@ -524,7 +524,7 @@ export default function DashboardPage() {
 
       {/* ── Tabs bar (section selector) ────────────────────────────────── */}
       <div
-        className="sticky top-[56px] z-20 border-b px-6 py-3 flex items-center gap-2"
+        className="sticky top-0 z-20 border-b px-6 py-3 flex items-center gap-2"
         style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
         <button
           onClick={() => setActiveTab("mine")}
@@ -543,7 +543,7 @@ export default function DashboardPage() {
       {/* ── Filters bar (controls within the section) ──────────────────── */}
       {activeTab === "mine" && (
         <div
-          className="sticky top-[100px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
+          className="sticky top-[56px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
           style={{ borderColor: "#0d1530", background: "#05071a" }}>
           <span className="font-orbitron text-[9px] tracking-[0.3em] text-gray-700 uppercase flex-shrink-0">
             MY GAMES
