@@ -56,17 +56,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: user.id },
           select: { displayName: true, credits: true },
         });
-        token.displayName = dbUser?.displayName ?? user.name ?? null;
+        token.displayName = dbUser?.displayName ?? null;
         token.credits = dbUser?.credits ?? 0;
-
-        // OAuth (Google) users have no displayName yet — seed it from their profile name.
-        if (!dbUser?.displayName && user.name) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { displayName: user.name },
-          });
-          token.displayName = user.name;
-        }
       }
       return token;
     },
