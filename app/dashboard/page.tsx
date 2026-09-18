@@ -149,7 +149,10 @@ function ModifyModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPublic: next }),
     });
-    if (res.ok) setIsPublic(next);
+    if (res.ok) {
+      setIsPublic(next);
+      onModified({ ...scenario, isPublic: next });
+    }
   };
 
   const handleModify = async () => {
@@ -228,7 +231,7 @@ function ModifyModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      onClick={e => { if (e.target === e.currentTarget) { e.stopPropagation(); onClose(); } }}>
 
       <div
         className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
@@ -278,7 +281,7 @@ function ModifyModal({
 
             {/* Close */}
             <button
-              onClick={onClose}
+              onClick={e => { e.stopPropagation(); onClose(); }}
               className="ml-2 text-gray-500 hover:text-white transition text-xl leading-none"
               style={{ fontFamily: "sans-serif" }}>
               ×
