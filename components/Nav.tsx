@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function Nav() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
 
   const isPlay = pathname?.startsWith("/play");
 
@@ -43,7 +44,7 @@ export default function Nav() {
           </>
         ) : (
           <button
-            onClick={() => signIn("google")}
+            onClick={() => router.push("/login")}
             className="text-xs px-4 py-1.5 rounded font-orbitron transition"
             style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: "#4488ff" }}>
             Sign In

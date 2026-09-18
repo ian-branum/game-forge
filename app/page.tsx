@@ -1,5 +1,5 @@
 "use client";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -92,13 +92,13 @@ export default function LandingPage() {
         </p>
 
         <button
-          onClick={() => signIn("google")}
+          onClick={() => router.push("/login")}
           className="flex items-center gap-3 px-8 py-4 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
           style={{ background: "linear-gradient(135deg, #4488ff33, #4488ff55)", border: "2px solid #4488ff", color: "#4488ff", boxShadow: "0 0 30px #4488ff33" }}>
           <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
             <path d="M43.6 20.2H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.8z" fill="#4488ff" opacity="0.7" />
           </svg>
-          Sign In to Start Forging
+          Get Started · Free
         </button>
 
         <p className="text-gray-600 text-xs mt-4">
@@ -240,10 +240,10 @@ export default function LandingPage() {
           Sign up free and get 3 credits to start. No credit card required.
         </p>
         <button
-          onClick={() => signIn("google")}
+          onClick={() => router.push("/login")}
           className="px-8 py-4 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
           style={{ background: "linear-gradient(135deg, #4488ff33, #4488ff55)", border: "2px solid #4488ff", color: "#4488ff", boxShadow: "0 0 30px #4488ff33" }}>
-          Sign In with Google · Free
+          Get Started · Free
         </button>
       </section>
 
