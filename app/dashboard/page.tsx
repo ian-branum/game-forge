@@ -519,63 +519,68 @@ export default function DashboardPage() {
   return (
     <div className="min-h-[calc(100vh-56px)]" style={{ background: "#05071a" }}>
 
-      {/* ── Tabs + filters ─────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 border-b" style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
-        {/* Pill tabs */}
-        <div className="px-6 pt-3 pb-2 flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("mine")}
-            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-            style={activeTab === "mine" ? PILL_ACTIVE : PILL_INACTIVE}>
-            MY GAMES
-          </button>
-          <button
-            onClick={() => setActiveTab("marketplace")}
-            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-            style={activeTab === "marketplace" ? PILL_ACTIVE : PILL_INACTIVE}>
-            MARKETPLACE
-          </button>
-        </div>
-
-        {/* Filters (My Games only) */}
-        {activeTab === "mine" && (
-          <div className="px-6 pb-3 flex items-center gap-3 flex-wrap">
-            {/* Category filter */}
-            <select
-              value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}
-              className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
-              style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
-              <option value="all">ALL TYPES</option>
-              <option value="sandbox">🎮 Games &amp; Puzzles</option>
-              <option value="tactical">⚔️ WW2 Tactical</option>
-              <option value="narrative">📖 Adventure</option>
-            </select>
-
-            {/* Active / Archived toggle */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => setArchivedView(false)}
-                className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-                style={!archivedView
-                  ? { background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" }
-                  : PILL_INACTIVE}>
-                ACTIVE
-              </button>
-              <button
-                onClick={() => setArchivedView(true)}
-                className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-                style={archivedView
-                  ? { background: "#f59e0b22", border: "1px solid #f59e0b66", color: "#f59e0b" }
-                  : PILL_INACTIVE}>
-                ARCHIVED
-              </button>
-            </div>
-
-            <div className="flex-1" />
-          </div>
-        )}
+      {/* ── Tabs bar (section selector) ────────────────────────────────── */}
+      <div
+        className="sticky top-[56px] z-20 border-b px-6 py-3 flex items-center gap-2"
+        style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+        <button
+          onClick={() => setActiveTab("mine")}
+          className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+          style={activeTab === "mine" ? PILL_ACTIVE : PILL_INACTIVE}>
+          MY GAMES
+        </button>
+        <button
+          onClick={() => setActiveTab("marketplace")}
+          className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+          style={activeTab === "marketplace" ? PILL_ACTIVE : PILL_INACTIVE}>
+          MARKETPLACE
+        </button>
       </div>
+
+      {/* ── Filters bar (controls within the section) ──────────────────── */}
+      {activeTab === "mine" && (
+        <div
+          className="sticky top-[100px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
+          style={{ borderColor: "#0d1530", background: "#05071a" }}>
+          <span className="font-orbitron text-[9px] tracking-[0.3em] text-gray-700 uppercase flex-shrink-0">
+            MY GAMES
+          </span>
+
+          {/* Category filter */}
+          <select
+            value={filterCategory}
+            onChange={e => setFilterCategory(e.target.value)}
+            className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
+            style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
+            <option value="all">ALL TYPES</option>
+            <option value="sandbox">🎮 Games &amp; Puzzles</option>
+            <option value="tactical">⚔️ WW2 Tactical</option>
+            <option value="narrative">📖 Adventure</option>
+          </select>
+
+          {/* Active / Archived toggle */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setArchivedView(false)}
+              className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+              style={!archivedView
+                ? { background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" }
+                : PILL_INACTIVE}>
+              ACTIVE
+            </button>
+            <button
+              onClick={() => setArchivedView(true)}
+              className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+              style={archivedView
+                ? { background: "#f59e0b22", border: "1px solid #f59e0b66", color: "#f59e0b" }
+                : PILL_INACTIVE}>
+              ARCHIVED
+            </button>
+          </div>
+
+          <div className="flex-1" />
+        </div>
+      )}
 
       {/* ── Content ────────────────────────────────────────────────────── */}
       {activeTab === "marketplace" ? (
