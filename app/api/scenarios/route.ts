@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       priceToPlay: true,
       priceToClone: true,
       activeVersionId: true,
+      archived: true,
       versions: {
         select: { id: true, versionNum: true, prompt: true, createdAt: true },
         orderBy: { versionNum: "asc" },

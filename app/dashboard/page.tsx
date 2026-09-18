@@ -36,6 +36,7 @@ interface ScenarioSummary {
   activeVersionId: string | null;
   versions: GameVersion[];
   createdAt: string;
+  archived: boolean;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -60,11 +61,13 @@ function ModifyModal({
   currentUserId,
   onClose,
   onModified,
+  onArchived,
 }: {
   scenario: ScenarioSummary;
   currentUserId: string;
   onClose: () => void;
   onModified: (updated: ScenarioSummary) => void;
+  onArchived: (id: string) => void;
 }) {
   const meta = CATEGORY_META[scenario.category] ?? CATEGORY_META.tactical;
   const isOwner = scenario.userId === currentUserId;
@@ -73,6 +76,7 @@ function ModifyModal({
   const [activeVersionId, setActiveVersionId] = useState<string | null>(scenario.activeVersionId ?? null);
   const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
   const [settingActiveId, setSettingActiveId] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   // Editable title / description
   const [title, setTitle] = useState(scenario.title);
@@ -130,6 +134,17 @@ function ModifyModal({
       setDescription(nextDescription ?? "");
       flashDetailsSaved();
       onModified({ ...scenario, title: nextTitle, description: nextDescription });
+    }
+  };
+
+  const handleArchiveFromModal = async () => {
+    setArchiving(true);
+    try {
+      await fetch(`/api/scenarios/${scenario.id}/archive`, { method: "PATCH" });
+      onArchived(scenario.id);
+      onClose();
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -442,7 +457,18 @@ function ModifyModal({
         </div>
 
         {/* Modal footer — Play button */}
-        <div className="px-6 py-4 border-t flex-shrink-0 flex justify-end" style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+        <div className="px-6 py-4 border-t flex-shrink-0 flex items-center justify-between gap-3" style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+          {isOwner ? (
+            <button
+              onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
+              disabled={archiving}
+              className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
+              style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
+              {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
+            </button>
+          ) : (
+            <span />
+          )}
           <Link
             href={`/play/${scenario.id}`}
             className="px-6 py-2.5 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
@@ -469,7 +495,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("mine");
   const [archivedView, setArchivedView] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [archiving, setArchiving] = useState<string | null>(null);
   const [modalScenario, setModalScenario] = useState<ScenarioSummary | null>(null);
 
   useEffect(() => {
@@ -493,18 +518,6 @@ export default function DashboardPage() {
   }, [status, archivedView, filterCategory]);
 
   useEffect(() => { loadScenarios(); }, [loadScenarios]);
-
-  const handleArchive = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setArchiving(id);
-    try {
-      await fetch(`/api/scenarios/${id}/archive`, { method: "PATCH" });
-      setScenarios(prev => prev.filter(s => s.id !== id));
-      if (modalScenario?.id === id) setModalScenario(null);
-    } finally {
-      setArchiving(null);
-    }
-  };
 
   const handleModified = (updated: ScenarioSummary) => {
     setScenarios(prev => prev.map(s => s.id === updated.id ? updated : s));
@@ -629,7 +642,6 @@ export default function DashboardPage() {
                 <tbody>
                   {scenarios.map(s => {
                     const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
-                    const isOwnerOf = s.userId === currentUserId;
                     return (
                       <tr
                         key={s.id}
@@ -712,24 +724,6 @@ export default function DashboardPage() {
                               style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
                               ✏ MODIFY
                             </button>
-
-                            {/* Archive (owners only) */}
-                            {isOwnerOf && (
-                              <button
-                                onClick={e => handleArchive(e, s.id)}
-                                disabled={archiving === s.id}
-                                title={archivedView ? "Restore" : "Archive"}
-                                className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                                style={{
-                                  background: `${m.color}22`,
-                                  border: `1px solid ${m.color}55`,
-                                  color: m.color,
-                                  opacity: archiving === s.id ? 0.4 : 1,
-                                  cursor: archiving === s.id ? "not-allowed" : "pointer",
-                                }}>
-                                {archiving === s.id ? "…" : archivedView ? "↩ RESTORE" : "🗄 ARCHIVE"}
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -749,6 +743,7 @@ export default function DashboardPage() {
           currentUserId={currentUserId}
           onClose={() => setModalScenario(null)}
           onModified={handleModified}
+          onArchived={id => setScenarios(prev => prev.filter(s => s.id !== id))}
         />
       )}
     </div>
