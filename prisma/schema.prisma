@@ -49,6 +49,8 @@ model User {
   sessions     Session[]
   scenarios    Scenario[]
   transactions CreditTransaction[]
+  plays        ScenarioPlay[]
+  licenses     ScenarioLicense[]
 }
 
 model VerificationToken {
@@ -74,12 +76,50 @@ model Scenario {
   priceToClone    Int      @default(0)
   activeVersionId String?
 
-  description     String?
-  isDemo        Boolean  @default(false)
+  description        String?
+  isDemo             Boolean  @default(false)
+
+  // Marketplace fields
+  parentScenarioId   String?
+  originalScenarioId String?
+  freePlayLimit      Int      @default(3)
+  adventureSubtype   String?  // "fixed" | "infinite" | "mystery" (narrative only)
+  trialStepLimit     Int?     // mystery only — author-defined, null = TBD
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Scenario?     @relation("ScenarioLineage", fields: [parentScenarioId], references: [id], onDelete: SetNull)
+  remixes       Scenario[]    @relation("ScenarioLineage")
   versions      GameVersion[]
   activeVersion GameVersion?  @relation("ScenarioActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  plays         ScenarioPlay[]
+  licenses      ScenarioLicense[]
+}
+
+model ScenarioPlay {
+  id         String   @id @default(cuid())
+  userId     String
+  scenarioId String
+  count      Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioId])
+}
+
+model ScenarioLicense {
+  id         String      @id @default(cuid())
+  userId     String
+  scenarioId String
+  type       String      // "PLAY" | "CLONE"
+  amount     Int
+  createdAt  DateTime    @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioId, type])
 }
 
 model GameVersion {
