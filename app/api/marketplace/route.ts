@@ -1,50 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { buildLineage, type LineageNode } from "@/lib/lineage";
 
-type LineageNode = { id: string; parentScenarioId: string | null; creator: string };
-type LineageRow = {
-  id: string;
-  parentScenarioId: string | null;
-  user: { displayName: string | null; name: string | null } | null;
-};
-
-// Walk the parent chain (current → original) and return [{displayName, scenarioId}] original → current.
-async function buildLineage(
-  startId: string,
-  cache: Map<string, LineageNode>
-): Promise<Array<{ displayName: string; scenarioId: string }>> {
-  const chain: Array<{ displayName: string; scenarioId: string }> = [];
-  const seen = new Set<string>();
-  let currentId: string | null = startId;
-
-  while (currentId && !seen.has(currentId) && chain.length < 20) {
-    seen.add(currentId);
-    let node = cache.get(currentId);
-    if (!node) {
-      const row: LineageRow | null = await prisma.scenario.findUnique({
-        where: { id: currentId },
-        select: {
-          id: true,
-          parentScenarioId: true,
-          user: { select: { displayName: true, name: true } },
-        },
-      });
-      if (!row) break;
-      node = {
-        id: row.id,
-        parentScenarioId: row.parentScenarioId,
-        creator: row.user?.displayName ?? row.user?.name ?? "Unknown",
-      };
-      cache.set(currentId, node);
-    }
-    chain.unshift({ displayName: node.creator, scenarioId: node.id });
-    currentId = node.parentScenarioId;
-  }
-
-  return chain;
-}
-
+// GET /api/marketplace
+// Browse other people's PUBLIC, non-archived, non-demo games.
+// Games the viewer already bought or cloned are excluded — they live in the Play tab.
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -56,6 +17,14 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get("category");
   const sort = searchParams.get("sort") ?? "newest";
   const q = searchParams.get("q")?.trim();
+  const creator = searchParams.get("creator")?.trim();
+
+  // Games the viewer already has access to (bought or cloned) must NOT appear in Buy.
+  const ownedLicenses = await prisma.scenarioLicense.findMany({
+    where: { userId },
+    select: { scenarioId: true },
+  });
+  const ownedIds = [...new Set(ownedLicenses.map(l => l.scenarioId))];
 
   const rows = await prisma.scenario.findMany({
     where: {
@@ -63,7 +32,18 @@ export async function GET(req: NextRequest) {
       isDemo: false,
       archived: false,
       userId: { not: userId },
+      id: { notIn: ownedIds },
       ...(category && category !== "all" ? { category } : {}),
+      ...(creator
+        ? {
+            user: {
+              OR: [
+                { displayName: { equals: creator, mode: "insensitive" as const } },
+                { name: { equals: creator, mode: "insensitive" as const } },
+              ],
+            },
+          }
+        : {}),
       ...(q
         ? {
             OR: [

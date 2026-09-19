@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { buildLineage, type LineageNode } from "@/lib/lineage";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
       title: true,
       description: true,
       category: true,
+      parentScenarioId: true,
       createdAt: true,
       user: { select: { displayName: true, name: true } },
     } as const;
@@ -44,10 +46,17 @@ export async function GET(req: NextRequest) {
         })
       : [];
 
-    const scenarios = [...mine, ...licensed].map(({ user, ...rest }) => ({
-      ...rest,
-      creator: user?.displayName ?? user?.name ?? "Unknown",
-    }));
+    const lineageCache = new Map<string, LineageNode>();
+
+    // The union naturally yields two cards for a cloned game: the original I hold a
+    // license for, plus my own fork (which carries the lineage chain back to it).
+    const scenarios = await Promise.all(
+      [...mine, ...licensed].map(async ({ user, ...rest }) => ({
+        ...rest,
+        creator: user?.displayName ?? user?.name ?? "Unknown",
+        lineage: rest.parentScenarioId ? await buildLineage(rest.id, lineageCache) : [],
+      }))
+    );
 
     return NextResponse.json({ scenarios, currentUserId: userId });
   }

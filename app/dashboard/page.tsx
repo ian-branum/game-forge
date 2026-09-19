@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const CATEGORY_META: Record<string, { emoji: string; color: string; label: string }> = {
@@ -50,6 +50,7 @@ interface PlayScenario {
   category: string;
   creator: string;
   createdAt: string;
+  lineage: { displayName: string; scenarioId: string }[];
 }
 
 interface MarketplaceScenario {
@@ -96,6 +97,9 @@ const ADVENTURE_SUBTYPES = [
   { id: "infinite", label: "Infinite Replay" },
   { id: "mystery", label: "Mystery" },
 ];
+
+// Creator/lineage names route to the Buy tab filtered by that creator.
+const creatorUrl = (name: string) => `/dashboard?tab=buy&creator=${encodeURIComponent(name)}`;
 
 // ─── Modify Modal ────────────────────────────────────────────────────────────
 
@@ -633,43 +637,45 @@ function ModifyModal({
   );
 }
 
-// ─── Marketplace card ────────────────────────────────────────────────────────
+// ─── Lineage chain (shared by Play + Buy cards) ───────────────────────────────
 
-function MarketplaceCard({
-  s,
-  busy,
-  error,
-  onTry,
-  onBuy,
-  onClone,
+function LineageChain({
+  lineage,
+  onNameClick,
 }: {
-  s: MarketplaceScenario;
-  busy: string | null;
-  error: string;
-  onTry: () => void;
-  onBuy: (type: "PLAY" | "CLONE") => void;
-  onClone: () => void;
+  lineage: { displayName: string; scenarioId: string }[];
+  onNameClick: (name: string) => void;
 }) {
-  const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
-  const router = useRouter();
-  const owned = s.userStatus.hasPlayLicense || s.userStatus.hasCloneLicense;
+  if (lineage.length <= 1) return null;
+  return (
+    <div className="text-[11px] text-gray-700 flex flex-wrap items-center gap-1 mb-3">
+      {lineage.map((l, i) => (
+        <span key={`${l.scenarioId}-${i}`} className="flex items-center gap-1">
+          {i > 0 && <span>→</span>}
+          <button
+            onClick={() => onNameClick(l.displayName)}
+            className="hover:text-[#4488ff] underline">
+            {l.displayName}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
 
-  const badge = owned
-    ? { text: "OWNED", style: { background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e" } }
-    : s.userStatus.trialCount > 0
-    ? { text: `TRIAL ${Math.max(0, s.freePlayLimit - s.userStatus.trialCount)}/${s.freePlayLimit} LEFT`, style: { background: "#f59e0b11", border: "1px solid #f59e0b55", color: "#f59e0b" } }
-    : { text: "FREE TRIAL", style: { background: "#4488ff11", border: "1px solid #4488ff55", color: "#4488ff" } };
+// ─── Play tab card ────────────────────────────────────────────────────────────
+
+function PlayCard({ s }: { s: PlayScenario }) {
+  const meta = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
+  const router = useRouter();
 
   return (
     <div className="rounded-2xl p-4 flex flex-col"
-      style={{ background: "#070d20", border: "1px solid #1e2a4a" }}>
-      {/* Badges */}
+      style={{ background: "#070d20", border: "1px solid #1e2a4a", borderRadius: "1rem" }}>
+      {/* Type badge */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full" style={badge.style}>
-          {badge.text}
-        </span>
-        <span className="font-orbitron text-[10px] tracking-widest" style={{ color: m.color }}>
-          {m.emoji} {m.label}
+        <span className="font-orbitron text-[10px] tracking-widest" style={{ color: meta.color }}>
+          {meta.emoji} {meta.label}
         </span>
       </div>
 
@@ -677,29 +683,81 @@ function MarketplaceCard({
       <h3 className="font-orbitron font-black text-white text-base leading-snug mb-1">{s.title}</h3>
       {s.description && <p className="text-gray-500 text-xs italic mb-3 line-clamp-2">{s.description}</p>}
 
-      {/* Creator + lineage */}
+      {/* Creator */}
       <div className="text-xs text-gray-600 mb-1">
         By{" "}
         <button
-          onClick={() => router.push(`/players/${encodeURIComponent(s.creator)}`)}
+          onClick={() => router.push(creatorUrl(s.creator))}
           className="text-gray-400 hover:text-[#4488ff] underline">
           {s.creator}
         </button>
       </div>
-      {s.lineage.length > 1 && (
-        <div className="text-[11px] text-gray-700 flex flex-wrap items-center gap-1 mb-3">
-          {s.lineage.map((l, i) => (
-            <span key={`${l.scenarioId}-${i}`} className="flex items-center gap-1">
-              {i > 0 && <span>→</span>}
-              <button
-                onClick={() => router.push(`/players/${encodeURIComponent(l.displayName)}`)}
-                className="hover:text-[#4488ff] underline">
-                {l.displayName}
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+
+      {/* Lineage */}
+      <LineageChain lineage={s.lineage} onNameClick={name => router.push(creatorUrl(name))} />
+
+      {/* Play */}
+      <div className="mt-auto pt-3">
+        <Link
+          href={`/play/${s.id}`}
+          className="block w-full text-center font-orbitron font-black text-xs tracking-widest py-2.5 rounded-lg transition hover:scale-[1.02]"
+          style={{ minHeight: "44px", lineHeight: "24px", background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
+          ▶ PLAY
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Buy tab card ─────────────────────────────────────────────────────────────
+
+function BuyCard({
+  s,
+  busy,
+  error,
+  onTry,
+  onBuy,
+}: {
+  s: MarketplaceScenario;
+  busy: string | null;
+  error: string;
+  onTry: () => void;
+  onBuy: (type: "PLAY" | "CLONE") => void;
+}) {
+  const meta = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
+  const router = useRouter();
+  const trialsLeft = Math.max(0, s.freePlayLimit - s.userStatus.trialCount);
+
+  return (
+    <div className="rounded-2xl p-4 flex flex-col"
+      style={{ background: "#070d20", border: "1px solid #1e2a4a", borderRadius: "1rem" }}>
+      {/* Badges */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full"
+          style={{ background: "#4488ff11", border: "1px solid #4488ff55", color: "#4488ff" }}>
+          {s.userStatus.trialCount > 0 ? `TRIAL ${trialsLeft}/${s.freePlayLimit} LEFT` : "FREE TRIAL"}
+        </span>
+        <span className="font-orbitron text-[10px] tracking-widest" style={{ color: meta.color }}>
+          {meta.emoji} {meta.label}
+        </span>
+      </div>
+
+      {/* Title + description */}
+      <h3 className="font-orbitron font-black text-white text-base leading-snug mb-1">{s.title}</h3>
+      {s.description && <p className="text-gray-500 text-xs italic mb-3 line-clamp-2">{s.description}</p>}
+
+      {/* Creator */}
+      <div className="text-xs text-gray-600 mb-1">
+        By{" "}
+        <button
+          onClick={() => router.push(creatorUrl(s.creator))}
+          className="text-gray-400 hover:text-[#4488ff] underline">
+          {s.creator}
+        </button>
+      </div>
+
+      {/* Lineage */}
+      <LineageChain lineage={s.lineage} onNameClick={name => router.push(creatorUrl(name))} />
 
       <div className="text-[11px] text-gray-600 mb-3">
         {s.versionCount} version{s.versionCount === 1 ? "" : "s"} · {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -709,53 +767,31 @@ function MarketplaceCard({
 
       {/* Actions */}
       <div className="mt-auto space-y-2">
-        {owned || !s.userStatus.canTrial ? (
+        {s.userStatus.canTrial && (
           <button
             onClick={onTry}
             disabled={busy !== null}
-            className="w-full font-orbitron font-black text-xs tracking-widest py-2.5 rounded-lg transition hover:scale-[1.02] disabled:opacity-40"
-            style={{ minHeight: "44px", background: `${m.color}22`, border: `2px solid ${m.color}66`, color: m.color }}>
-            {busy === "try" ? "…" : "▶ PLAY"}
-          </button>
-        ) : (
-          <button
-            onClick={onTry}
-            disabled={busy !== null}
-            className="w-full font-orbitron font-black text-xs tracking-widest py-2.5 rounded-lg transition hover:scale-[1.02] disabled:opacity-40"
-            style={{ minHeight: "44px", background: `${m.color}22`, border: `2px solid ${m.color}66`, color: m.color }}>
-            {busy === "try" ? "…" : "▶ TRY"}
+            className="w-full font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
+            style={{ minHeight: "44px", background: "transparent", border: `1px solid ${meta.color}44`, color: meta.color }}>
+            {busy === "try" ? "…" : `▶ TRY FREE (${trialsLeft} remaining)`}
           </button>
         )}
 
-        {!owned && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => onBuy("PLAY")}
-              disabled={busy !== null}
-              className="flex-1 font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
-              style={{ minHeight: "44px", background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-              {busy === "buy-play" ? "…" : s.priceToPlay > 0 ? `BUY PLAY · ${s.priceToPlay}` : "PLAY · FREE"}
-            </button>
-            {/* CLONE only offered when the creator allows cloning */}
-            {s.isClonable && (
-              <button
-                onClick={() => onBuy("CLONE")}
-                disabled={busy !== null}
-                className="flex-1 font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
-                style={{ minHeight: "44px", background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-                {busy === "buy-clone" ? "…" : s.priceToClone > 0 ? `BUY CLONE · ${s.priceToClone}` : "CLONE · FREE"}
-              </button>
-            )}
-          </div>
-        )}
+        <button
+          onClick={() => onBuy("PLAY")}
+          disabled={busy !== null}
+          className="w-full font-orbitron font-black text-xs tracking-widest py-2.5 rounded-lg transition hover:scale-[1.02] disabled:opacity-40"
+          style={{ minHeight: "44px", background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
+          {busy === "buy-play" ? "…" : s.priceToPlay > 0 ? `▶ BUY TO PLAY — ${s.priceToPlay} CREDITS` : "▶ GET TO PLAY — FREE"}
+        </button>
 
-        {s.userStatus.hasCloneLicense && (
+        {s.isClonable && (
           <button
-            onClick={onClone}
+            onClick={() => onBuy("CLONE")}
             disabled={busy !== null}
             className="w-full font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
             style={{ minHeight: "44px", background: "transparent", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-            {busy === "clone" ? "…" : "⬇ CLONE TO MY GAMES"}
+            {busy === "buy-clone" ? "…" : s.priceToClone > 0 ? `⬇ CLONE — ${s.priceToClone} CREDITS` : "⬇ CLONE — FREE"}
           </button>
         )}
       </div>
@@ -763,13 +799,26 @@ function MarketplaceCard({
   );
 }
 
-// ─── Dashboard Page ──────────────────────────────────────────────────────────
+// ─── Dashboard (Suspense-wrapped so useSearchParams stays static-render safe) ──
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="font-orbitron text-xs tracking-widest text-gray-500 animate-pulse">LOADING...</div>
+      </div>
+    }>
+      <DashboardInner />
+    </Suspense>
+  );
+}
 
 type Tab = "play" | "build" | "buy";
 
-export default function DashboardPage() {
+function DashboardInner() {
   const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
@@ -790,12 +839,25 @@ export default function DashboardPage() {
   const [marketSort, setMarketSort] = useState<"newest" | "popular">("newest");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [creatorFilter, setCreatorFilter] = useState<string>("");
   const [cardBusy, setCardBusy] = useState<string | null>(null);
   const [cardError, setCardError] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/");
   }, [status, router]);
+
+  // Read ?tab= and ?creator= from the URL on load / navigation.
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "buy" || tabParam === "play" || tabParam === "build") {
+      setActiveTab(tabParam);
+    }
+    const creatorParam = searchParams.get("creator");
+    if (creatorParam) {
+      setCreatorFilter(decodeURIComponent(creatorParam));
+    }
+  }, [searchParams]);
 
   // Debounce the marketplace search box.
   useEffect(() => {
@@ -837,7 +899,7 @@ export default function DashboardPage() {
 
   useEffect(() => { loadPlay(); }, [loadPlay]);
 
-  // ── Buy tab loader (other people's public games) ──
+  // ── Buy tab loader (other people's public, unowned games) ──
   const loadMarketplace = useCallback(() => {
     if (status !== "authenticated" || activeTab !== "buy") return;
     setMarketLoading(true);
@@ -845,6 +907,7 @@ export default function DashboardPage() {
     if (marketCategory !== "all") params.set("category", marketCategory);
     params.set("sort", marketSort);
     if (search.trim()) params.set("q", search.trim());
+    if (creatorFilter.trim()) params.set("creator", creatorFilter.trim());
     fetch(`/api/marketplace?${params}`)
       .then(r => r.json())
       .then(data => {
@@ -852,7 +915,7 @@ export default function DashboardPage() {
         setMarketLoading(false);
       })
       .catch(() => setMarketLoading(false));
-  }, [status, activeTab, marketCategory, marketSort, search]);
+  }, [status, activeTab, marketCategory, marketSort, search, creatorFilter]);
 
   useEffect(() => { loadMarketplace(); }, [loadMarketplace]);
 
@@ -861,8 +924,9 @@ export default function DashboardPage() {
     setModalScenario(updated);
   };
 
-  const setCardStatus = (id: string, patch: Partial<MarketplaceScenario["userStatus"]>) => {
-    setMarket(prev => prev.map(c => c.id === id ? { ...c, userStatus: { ...c.userStatus, ...patch } } : c));
+  const clearCreatorFilter = () => {
+    setCreatorFilter("");
+    router.replace("/dashboard?tab=buy");
   };
 
   const handleTry = async (s: MarketplaceScenario) => {
@@ -883,6 +947,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Buy/Clone: on success the game becomes owned, so it drops out of the Buy tab.
   const handleBuy = async (s: MarketplaceScenario, type: "PLAY" | "CLONE") => {
     setCardBusy(`${type === "PLAY" ? "buy-play" : "buy-clone"}:${s.id}`);
     setCardError(null);
@@ -898,32 +963,18 @@ export default function DashboardPage() {
         setCardBusy(null);
         return;
       }
-      if (type === "PLAY") {
-        setCardStatus(s.id, { hasPlayLicense: true, canTrial: false });
-      } else {
-        setCardStatus(s.id, { hasCloneLicense: true, canTrial: false });
-      }
-      setCardBusy(null);
-    } catch {
-      setCardError({ id: s.id, message: "Something went wrong." });
-      setCardBusy(null);
-    }
-  };
 
-  const handleClone = async (s: MarketplaceScenario) => {
-    setCardBusy(`clone:${s.id}`);
-    setCardError(null);
-    try {
-      const res = await fetch(`/api/marketplace/${s.id}/clone`, { method: "POST" });
-      if (res.ok) {
-        // The fork lands in Build; the granted PLAY license shows the original in Play.
-        setActiveTab("build");
-        loadScenarios();
-        setCardBusy(null);
-        return;
+      if (type === "CLONE") {
+        const cloneRes = await fetch(`/api/marketplace/${s.id}/clone`, { method: "POST" });
+        if (!cloneRes.ok) {
+          const data = (await cloneRes.json().catch(() => ({}))) as { error?: string };
+          setCardError({ id: s.id, message: data.error ?? "Cloned, but the copy could not be created." });
+          setCardBusy(null);
+          return;
+        }
       }
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setCardError({ id: s.id, message: data.error ?? "Could not clone this game." });
+
+      setMarket(prev => prev.filter(c => c.id !== s.id));
       setCardBusy(null);
     } catch {
       setCardError({ id: s.id, message: "Something went wrong." });
@@ -1046,6 +1097,20 @@ export default function DashboardPage() {
             className="flex-1 min-w-[160px] rounded-lg px-3 py-2 text-sm"
             style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#e5e7eb", outline: "none" }}
           />
+
+          {creatorFilter && (
+            <span
+              className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-full flex items-center gap-2 flex-shrink-0"
+              style={{ background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" }}>
+              Games by: {creatorFilter}
+              <button
+                onClick={clearCreatorFilter}
+                className="hover:text-white transition"
+                style={{ fontFamily: "sans-serif", lineHeight: 1 }}>
+                ×
+              </button>
+            </span>
+          )}
         </div>
       )}
 
@@ -1077,67 +1142,8 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
-                    {["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED"].map(h => (
-                      <th key={h} className="text-left pb-3 font-orbitron text-[10px] tracking-widest text-gray-600 pr-4 last:pr-0 whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {playScenarios.map(s => {
-                    const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
-                    return (
-                      <tr
-                        key={s.id}
-                        onClick={() => router.push(`/play/${s.id}`)}
-                        className="border-b transition cursor-pointer"
-                        style={{ borderColor: "#1e2a4a11" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "#ffffff05")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-
-                        <td className="py-3 pr-4 whitespace-nowrap">
-                          <span className="font-orbitron text-xs font-bold" style={{ color: m.color }}>
-                            {m.emoji} {m.label}
-                          </span>
-                        </td>
-
-                        <td className="py-3 pr-4 max-w-[200px]">
-                          <span className="font-orbitron text-xs font-bold text-white truncate block">
-                            {s.title}
-                          </span>
-                        </td>
-
-                        <td className="py-3 pr-4 max-w-[280px]">
-                          {s.description ? (
-                            <span className="text-gray-500 text-xs italic truncate block">
-                              {s.description}
-                            </span>
-                          ) : (
-                            <span className="text-gray-700 text-xs">—</span>
-                          )}
-                        </td>
-
-                        <td className="py-3 pr-4 max-w-[140px]">
-                          <span className="text-gray-500 text-xs truncate block">
-                            {s.creator}
-                          </span>
-                        </td>
-
-                        <td className="py-3 pr-4 whitespace-nowrap">
-                          <span className="text-gray-600 text-xs">
-                            {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {playScenarios.map(s => <PlayCard key={s.id} s={s} />)}
             </div>
           )}
         </div>
@@ -1273,20 +1279,23 @@ export default function DashboardPage() {
           ) : market.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
               <div className="text-5xl">🏪</div>
-              <div className="font-orbitron text-gray-600 text-sm">No games published yet.</div>
-              <p className="text-gray-700 text-xs">Publish one of your games to be the first.</p>
+              <div className="font-orbitron text-gray-600 text-sm">
+                {creatorFilter ? `No games by ${creatorFilter}.` : "No games published yet."}
+              </div>
+              <p className="text-gray-700 text-xs">
+                {creatorFilter ? "Try clearing the creator filter." : "Publish one of your games to be the first."}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {market.map(s => (
-                <MarketplaceCard
+                <BuyCard
                   key={s.id}
                   s={s}
                   busy={cardBusy?.endsWith(s.id) ? cardBusy.split(":")[0] : null}
                   error={cardError?.id === s.id ? cardError.message : ""}
                   onTry={() => handleTry(s)}
                   onBuy={type => handleBuy(s, type)}
-                  onClone={() => handleClone(s)}
                 />
               ))}
             </div>
