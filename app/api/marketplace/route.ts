@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
   const rows = await prisma.scenario.findMany({
     where: {
       isPublic: true,
-      isDemo: false,
       archived: false,
       userId: { not: userId },
       id: { notIn: ownedIds },
