@@ -31,6 +31,8 @@ interface ScenarioSummary {
   category: string;
   prompt: string;
   isPublic: boolean;
+  isClonable: boolean;
+  clonesMayRepublish: boolean;
   priceToPlay: number;
   priceToClone: number;
   freePlayLimit: number;
@@ -39,6 +41,15 @@ interface ScenarioSummary {
   versions: GameVersion[];
   createdAt: string;
   archived: boolean;
+}
+
+interface PlayScenario {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  creator: string;
+  createdAt: string;
 }
 
 interface MarketplaceScenario {
@@ -52,6 +63,8 @@ interface MarketplaceScenario {
   freePlayLimit: number;
   adventureSubtype: string | null;
   isPublic: boolean;
+  isClonable: boolean;
+  clonesMayRepublish: boolean;
   createdAt: string;
   versionCount: number;
   lineage: { displayName: string; scenarioId: string }[];
@@ -123,6 +136,8 @@ function ModifyModal({
 
   // Publish / marketplace settings
   const [pubPublic, setPubPublic] = useState(scenario.isPublic);
+  const [pubClonable, setPubClonable] = useState(scenario.isClonable ?? false);
+  const [pubRepublish, setPubRepublish] = useState(scenario.clonesMayRepublish ?? true);
   const [pubPriceToPlay, setPubPriceToPlay] = useState(scenario.priceToPlay ?? 0);
   const [pubPriceToClone, setPubPriceToClone] = useState(scenario.priceToClone ?? 0);
   const [pubFreePlay, setPubFreePlay] = useState(scenario.freePlayLimit ?? 1);
@@ -255,6 +270,8 @@ function ModifyModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           isPublic: pubPublic,
+          isClonable: pubClonable,
+          clonesMayRepublish: pubRepublish,
           priceToPlay: pubPriceToPlay,
           priceToClone: pubPriceToClone,
           freePlayLimit: pubFreePlay,
@@ -269,6 +286,8 @@ function ModifyModal({
       onModified({
         ...scenario,
         isPublic: pubPublic,
+        isClonable: pubClonable,
+        clonesMayRepublish: pubRepublish,
         priceToPlay: pubPriceToPlay,
         priceToClone: pubPriceToClone,
         freePlayLimit: pubFreePlay,
@@ -485,6 +504,33 @@ function ModifyModal({
                 <span className="text-sm text-gray-300">Make public</span>
               </label>
 
+              <label className="flex items-center gap-3 cursor-pointer mb-4">
+                <input
+                  type="checkbox"
+                  checked={pubClonable}
+                  onChange={e => setPubClonable(e.target.checked)}
+                  className="w-4 h-4 accent-[#4488ff]"
+                />
+                <span className="text-sm text-gray-300">Allow cloning</span>
+              </label>
+
+              {pubClonable && (
+                <div className="ml-7 mb-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pubRepublish}
+                      onChange={e => setPubRepublish(e.target.checked)}
+                      className="w-4 h-4 accent-[#4488ff]"
+                    />
+                    <span className="text-sm text-gray-300">Allow clones to be republished</span>
+                  </label>
+                  <p className="text-gray-600 text-xs mt-2">
+                    If unchecked, players who clone this game cannot publish their fork publicly.
+                  </p>
+                </div>
+              )}
+
               {pubPublic && (
                 <div className="space-y-4">
                   <div className="flex gap-4">
@@ -690,17 +736,20 @@ function MarketplaceCard({
               style={{ minHeight: "44px", background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
               {busy === "buy-play" ? "…" : s.priceToPlay > 0 ? `BUY PLAY · ${s.priceToPlay}` : "PLAY · FREE"}
             </button>
-            <button
-              onClick={() => onBuy("CLONE")}
-              disabled={busy !== null}
-              className="flex-1 font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
-              style={{ minHeight: "44px", background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-              {busy === "buy-clone" ? "…" : s.priceToClone > 0 ? `BUY CLONE · ${s.priceToClone}` : "CLONE · FREE"}
-            </button>
+            {/* CLONE only offered when the creator allows cloning */}
+            {s.isClonable && (
+              <button
+                onClick={() => onBuy("CLONE")}
+                disabled={busy !== null}
+                className="flex-1 font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
+                style={{ minHeight: "44px", background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
+                {busy === "buy-clone" ? "…" : s.priceToClone > 0 ? `BUY CLONE · ${s.priceToClone}` : "CLONE · FREE"}
+              </button>
+            )}
           </div>
         )}
 
-        {(s.userStatus.hasCloneLicense || (!owned && busy === "cloned")) && (
+        {s.userStatus.hasCloneLicense && (
           <button
             onClick={onClone}
             disabled={busy !== null}
@@ -716,7 +765,7 @@ function MarketplaceCard({
 
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
-type Tab = "mine" | "marketplace";
+type Tab = "play" | "build" | "buy";
 
 export default function DashboardPage() {
   const { status } = useSession();
@@ -725,12 +774,16 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("mine");
+  const [activeTab, setActiveTab] = useState<Tab>("play");
   const [archivedView, setArchivedView] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [modalScenario, setModalScenario] = useState<ScenarioSummary | null>(null);
 
-  // Marketplace state
+  // Play tab state
+  const [playScenarios, setPlayScenarios] = useState<PlayScenario[]>([]);
+  const [playLoading, setPlayLoading] = useState(false);
+
+  // Buy tab state
   const [market, setMarket] = useState<MarketplaceScenario[]>([]);
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketCategory, setMarketCategory] = useState<string>("all");
@@ -750,6 +803,7 @@ export default function DashboardPage() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  // ── Build tab loader (my own scenarios) ──
   const loadScenarios = useCallback(() => {
     if (status !== "authenticated") return;
     setLoading(true);
@@ -768,8 +822,24 @@ export default function DashboardPage() {
 
   useEffect(() => { loadScenarios(); }, [loadScenarios]);
 
+  // ── Play tab loader (my own ∪ licensed originals) ──
+  const loadPlay = useCallback(() => {
+    if (status !== "authenticated" || activeTab !== "play") return;
+    setPlayLoading(true);
+    fetch(`/api/scenarios?mode=play`)
+      .then(r => r.json())
+      .then(data => {
+        setPlayScenarios(data.scenarios ?? []);
+        setPlayLoading(false);
+      })
+      .catch(() => setPlayLoading(false));
+  }, [status, activeTab]);
+
+  useEffect(() => { loadPlay(); }, [loadPlay]);
+
+  // ── Buy tab loader (other people's public games) ──
   const loadMarketplace = useCallback(() => {
-    if (status !== "authenticated" || activeTab !== "marketplace") return;
+    if (status !== "authenticated" || activeTab !== "buy") return;
     setMarketLoading(true);
     const params = new URLSearchParams();
     if (marketCategory !== "all") params.set("category", marketCategory);
@@ -846,8 +916,8 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`/api/marketplace/${s.id}/clone`, { method: "POST" });
       if (res.ok) {
-        setActiveTab("mine");
-        router.refresh();
+        // The fork lands in Build; the granted PLAY license shows the original in Play.
+        setActiveTab("build");
         loadScenarios();
         setCardBusy(null);
         return;
@@ -877,26 +947,32 @@ export default function DashboardPage() {
         className="sticky top-0 z-20 border-b px-6 py-3 flex items-center gap-2"
         style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
         <button
-          onClick={() => setActiveTab("mine")}
+          onClick={() => setActiveTab("play")}
           className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-          style={activeTab === "mine" ? PILL_ACTIVE : PILL_INACTIVE}>
-          MY GAMES
+          style={activeTab === "play" ? PILL_ACTIVE : PILL_INACTIVE}>
+          PLAY
         </button>
         <button
-          onClick={() => setActiveTab("marketplace")}
+          onClick={() => setActiveTab("build")}
           className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
-          style={activeTab === "marketplace" ? PILL_ACTIVE : PILL_INACTIVE}>
-          MARKETPLACE
+          style={activeTab === "build" ? PILL_ACTIVE : PILL_INACTIVE}>
+          BUILD
+        </button>
+        <button
+          onClick={() => setActiveTab("buy")}
+          className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition"
+          style={activeTab === "buy" ? PILL_ACTIVE : PILL_INACTIVE}>
+          BUY
         </button>
       </div>
 
-      {/* ── Filters bar (controls within the section) ──────────────────── */}
-      {activeTab === "mine" && (
+      {/* ── Build filters bar ──────────────────────────────────────────── */}
+      {activeTab === "build" && (
         <div
           className="sticky top-[56px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
           style={{ borderColor: "#0d1530", background: "#05071a" }}>
           <span className="font-orbitron text-[9px] tracking-[0.3em] text-gray-700 uppercase flex-shrink-0">
-            MY GAMES
+            BUILD
           </span>
 
           <select
@@ -933,13 +1009,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Marketplace filters bar ────────────────────────────────────── */}
-      {activeTab === "marketplace" && (
+      {/* ── Buy filters bar ────────────────────────────────────────────── */}
+      {activeTab === "buy" && (
         <div
           className="sticky top-[56px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
           style={{ borderColor: "#0d1530", background: "#05071a" }}>
           <span className="font-orbitron text-[9px] tracking-[0.3em] text-gray-700 uppercase flex-shrink-0">
-            MARKETPLACE
+            BUY
           </span>
 
           <select
@@ -973,8 +1049,102 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Content ────────────────────────────────────────────────────── */}
-      {activeTab === "mine" ? (
+      {/* ── PLAY tab ───────────────────────────────────────────────────── */}
+      {activeTab === "play" && (
+        <div className="px-6 py-6">
+          {playLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="font-orbitron text-xs text-gray-600 animate-pulse">LOADING...</div>
+            </div>
+          ) : playScenarios.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+              <div className="text-5xl">🎮</div>
+              <div className="font-orbitron text-gray-600 text-sm">Nothing to play yet.</div>
+              <p className="text-gray-700 text-xs">Forge a game in Build, or buy one in the marketplace.</p>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  onClick={() => setActiveTab("build")}
+                  className="px-6 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
+                  style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
+                  ⚡ BUILD A GAME
+                </button>
+                <button
+                  onClick={() => setActiveTab("buy")}
+                  className="px-6 py-3 rounded-xl font-orbitron text-sm tracking-widest transition-all hover:scale-105"
+                  style={{ background: "transparent", border: "2px solid #1e2a4a", color: "#9ca3af" }}>
+                  🏪 BROWSE MARKETPLACE
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
+                    {["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED"].map(h => (
+                      <th key={h} className="text-left pb-3 font-orbitron text-[10px] tracking-widest text-gray-600 pr-4 last:pr-0 whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {playScenarios.map(s => {
+                    const m = CATEGORY_META[s.category] ?? CATEGORY_META.sandbox;
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={() => router.push(`/play/${s.id}`)}
+                        className="border-b transition cursor-pointer"
+                        style={{ borderColor: "#1e2a4a11" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#ffffff05")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+
+                        <td className="py-3 pr-4 whitespace-nowrap">
+                          <span className="font-orbitron text-xs font-bold" style={{ color: m.color }}>
+                            {m.emoji} {m.label}
+                          </span>
+                        </td>
+
+                        <td className="py-3 pr-4 max-w-[200px]">
+                          <span className="font-orbitron text-xs font-bold text-white truncate block">
+                            {s.title}
+                          </span>
+                        </td>
+
+                        <td className="py-3 pr-4 max-w-[280px]">
+                          {s.description ? (
+                            <span className="text-gray-500 text-xs italic truncate block">
+                              {s.description}
+                            </span>
+                          ) : (
+                            <span className="text-gray-700 text-xs">—</span>
+                          )}
+                        </td>
+
+                        <td className="py-3 pr-4 max-w-[140px]">
+                          <span className="text-gray-500 text-xs truncate block">
+                            {s.creator}
+                          </span>
+                        </td>
+
+                        <td className="py-3 pr-4 whitespace-nowrap">
+                          <span className="text-gray-600 text-xs">
+                            {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BUILD tab ──────────────────────────────────────────────────── */}
+      {activeTab === "build" && (
         <div className="px-6 py-6">
           {loading ? (
             <div className="flex items-center justify-center py-24">
@@ -1091,7 +1261,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {/* ── BUY tab ────────────────────────────────────────────────────── */}
+      {activeTab === "buy" && (
         <div className="px-6 py-6">
           {marketLoading ? (
             <div className="flex items-center justify-center py-24">

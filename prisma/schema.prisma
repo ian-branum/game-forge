@@ -86,6 +86,10 @@ model Scenario {
   adventureSubtype   String?  // "fixed" | "infinite" | "mystery" (narrative only)
   trialStepLimit     Int?     // mystery only — author-defined, null = TBD
 
+  // Clone permission flags
+  isClonable         Boolean  @default(false) // creator allows others to fork this game
+  clonesMayRepublish Boolean  @default(true)  // forks may be published publicly by their owner
+
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   parent        Scenario?     @relation("ScenarioLineage", fields: [parentScenarioId], references: [id], onDelete: SetNull)
   remixes       Scenario[]    @relation("ScenarioLineage")
