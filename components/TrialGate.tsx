@@ -18,6 +18,7 @@ export default function TrialGate({
   priceToPlay,
   priceToClone,
   category,
+  isDemo = false,
   children,
 }: {
   scenarioId: string;
@@ -25,17 +26,22 @@ export default function TrialGate({
   priceToPlay: number;
   priceToClone: number;
   category: string;
+  isDemo?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
   const color = CATEGORY_COLOR[category] ?? "#4488ff";
 
-  const [status, setStatus] = useState<"checking" | "allowed" | "blocked">("checking");
+  // Demo games are always open — skip the API check entirely.
+  const [status, setStatus] = useState<"checking" | "allowed" | "blocked">(
+    isDemo ? "allowed" : "checking"
+  );
   const [info, setInfo] = useState({ priceToPlay, priceToClone, title });
   const [busy, setBusy] = useState<null | "play" | "clone">(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (isDemo) return; // no API call needed for demos
     let cancelled = false;
     fetch(`/api/play/${scenarioId}/start`, { method: "POST" })
       .then(async res => {

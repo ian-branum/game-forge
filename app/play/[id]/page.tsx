@@ -21,13 +21,15 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
 
   // The gate POSTs to /api/play/[id]/start on mount and renders the game only
   // once the server confirms the viewer is the owner, licensed, or within trial.
+  // Demo games bypass the gate entirely — no auth, no trial counting, no blocks.
   return (
     <TrialGate
       scenarioId={row.id}
       title={row.title}
       priceToPlay={row.priceToPlay}
       priceToClone={row.priceToClone}
-      category={row.category}>
+      category={row.category}
+      isDemo={row.isDemo}>
       <Player scenario={payload} />
     </TrialGate>
   );

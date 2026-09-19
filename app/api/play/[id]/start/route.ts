@@ -9,10 +9,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const userId = session.user.id;
   const { id } = await params;
 
   const scenario = await prisma.scenario.findUnique({
@@ -28,14 +24,20 @@ export async function POST(
   });
   if (!scenario) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Demo games are always free to play with no restrictions — no auth required.
+  if (scenario.isDemo) {
+    return NextResponse.json({ allowed: true });
+  }
+
+  // All non-demo routes require authentication.
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
+
   // The owner can always play their own game (and no tracking needed).
   if (scenario.userId === userId) {
     return NextResponse.json({ allowed: true, owner: true });
-  }
-
-  // Demos and licensed games bypass the trial limit.
-  if (scenario.isDemo) {
-    return NextResponse.json({ allowed: true });
   }
   const license = await prisma.scenarioLicense.findFirst({
     where: { userId, scenarioId: id, type: { in: ["PLAY", "CLONE"] } },
