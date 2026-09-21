@@ -150,6 +150,7 @@ function ModifyModal({
   const [pubSaved, setPubSaved] = useState(false);
   const [pubError, setPubError] = useState("");
   const pubTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pubInitRef = useRef(false);
 
   // Close on Escape
   useEffect(() => {
@@ -265,44 +266,49 @@ function ModifyModal({
     }
   };
 
-  const handlePublish = async () => {
+  const savePublish = async (overrides?: Partial<{
+    isPublic: boolean; isClonable: boolean; clonesMayRepublish: boolean;
+    priceToPlay: number; priceToClone: number; freePlayLimit: number; adventureSubtype: string;
+  }>) => {
+    const payload = {
+      isPublic: overrides?.isPublic ?? pubPublic,
+      isClonable: overrides?.isClonable ?? pubClonable,
+      clonesMayRepublish: overrides?.clonesMayRepublish ?? pubRepublish,
+      priceToPlay: overrides?.priceToPlay ?? pubPriceToPlay,
+      priceToClone: overrides?.priceToClone ?? pubPriceToClone,
+      freePlayLimit: overrides?.freePlayLimit ?? pubFreePlay,
+      adventureSubtype: scenario.category === "narrative"
+        ? (overrides?.adventureSubtype ?? pubAdventure)
+        : undefined,
+    };
     setPubSaving(true);
     setPubError("");
     try {
       const res = await fetch(`/api/scenarios/${scenario.id}/publish`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          isPublic: pubPublic,
-          isClonable: pubClonable,
-          clonesMayRepublish: pubRepublish,
-          priceToPlay: pubPriceToPlay,
-          priceToClone: pubPriceToClone,
-          freePlayLimit: pubFreePlay,
-          adventureSubtype: scenario.category === "narrative" ? pubAdventure : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setPubError(data.error ?? "Could not save publishing settings."); return; }
       setPubSaved(true);
       if (pubTimer.current) clearTimeout(pubTimer.current);
       pubTimer.current = setTimeout(() => setPubSaved(false), 2000);
-      onModified({
-        ...scenario,
-        isPublic: pubPublic,
-        isClonable: pubClonable,
-        clonesMayRepublish: pubRepublish,
-        priceToPlay: pubPriceToPlay,
-        priceToClone: pubPriceToClone,
-        freePlayLimit: pubFreePlay,
-        adventureSubtype: scenario.category === "narrative" ? pubAdventure : scenario.adventureSubtype,
-      });
+      onModified({ ...scenario, ...payload, adventureSubtype: payload.adventureSubtype ?? scenario.adventureSubtype });
     } catch {
       setPubError("Something went wrong. Please try again.");
     } finally {
       setPubSaving(false);
     }
   };
+
+  // Auto-save publish settings whenever they change (skip initial mount)
+  useEffect(() => {
+    if (!pubInitRef.current) { pubInitRef.current = true; return; }
+    const t = setTimeout(() => savePublish(), 800);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pubPublic, pubClonable, pubRepublish, pubPriceToPlay, pubPriceToClone, pubFreePlay, pubAdventure]);
 
   return (
     <div
@@ -512,7 +518,12 @@ function ModifyModal({
                 <input
                   type="checkbox"
                   checked={pubClonable}
-                  onChange={e => setPubClonable(e.target.checked)}
+                  onChange={e => {
+                    setPubClonable(e.target.checked);
+                    if (e.target.checked && pubPriceToClone < pubPriceToPlay) {
+                      setPubPriceToClone(pubPriceToPlay);
+                    }
+                  }}
                   className="w-4 h-4 accent-[#4488ff]"
                 />
                 <span className="text-sm text-gray-300">Allow cloning</span>
@@ -542,7 +553,12 @@ function ModifyModal({
                       <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO PLAY</label>
                       <div className="flex items-center gap-2">
                         <input type="number" min={0} value={pubPriceToPlay}
-                          onChange={e => setPubPriceToPlay(Number(e.target.value))} style={{ ...inputStyle }} />
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            setPubPriceToPlay(val);
+                            if (pubClonable && pubPriceToClone < val) setPubPriceToClone(val);
+                          }}
+                          style={{ ...inputStyle }} />
                         <span className="text-gray-500 text-xs flex-shrink-0">credits</span>
                       </div>
                     </div>
@@ -550,12 +566,13 @@ function ModifyModal({
                       <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO CLONE</label>
                       <div className="flex items-center gap-2">
                         <input type="number" min={0} value={pubPriceToClone}
-                          onChange={e => setPubPriceToClone(Number(e.target.value))} style={{ ...inputStyle }} />
+                          disabled={!pubClonable}
+                          onChange={e => setPubPriceToClone(Number(e.target.value))}
+                          style={{ ...inputStyle, opacity: pubClonable ? 1 : 0.35, cursor: pubClonable ? "auto" : "not-allowed" }} />
                         <span className="text-gray-500 text-xs flex-shrink-0">credits</span>
                       </div>
                     </div>
                   </div>
-                  <p className="text-gray-600 text-xs -mt-2">Clone price must be ≥ play price.</p>
 
                   <div>
                     <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-2">FREE TRIAL</label>
@@ -598,16 +615,6 @@ function ModifyModal({
               )}
 
               {pubError && <p className="text-red-400 text-xs mt-3">{pubError}</p>}
-
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handlePublish}
-                  disabled={pubSaving}
-                  className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
-                  {pubSaving ? "SAVING…" : "SAVE PUBLISHING SETTINGS"}
-                </button>
-              </div>
             </div>
           )}
         </div>
