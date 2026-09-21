@@ -238,7 +238,7 @@ export default function LoginPage() {
                       opacity="0.7"
                     />
                   </svg>
-                  SIGN IN WITH GMAIL
+                  {loading ? "PLEASE WAIT..." : "SIGN IN WITH GMAIL"}
                 </button>
 
                 <OrDivider />
@@ -249,7 +249,7 @@ export default function LoginPage() {
                   disabled={loading}
                   className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                   style={primaryBtnStyle}>
-                  CREATE ACCOUNT
+                  {loading ? "PLEASE WAIT..." : "CREATE ACCOUNT"}
                 </button>
               </>
             )}
