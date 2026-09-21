@@ -21,7 +21,7 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "0.65rem",
   letterSpacing: "0.15em",
-  color: "#64748b",
+  color: "lightgray",
   marginBottom: "0.35rem",
 };
 
@@ -36,7 +36,7 @@ function OrDivider() {
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
-      <span className="font-orbitron text-xs tracking-widest text-gray-600">OR</span>
+      <span className="font-orbitron text-xs tracking-widest text-gray-400">OR</span>
       <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
     </div>
   );
@@ -126,7 +126,7 @@ export default function LoginPage() {
       style={{ background: "#05071a" }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="font-orbitron text-xs tracking-[0.4em] text-gray-600 mb-3">WELCOME</div>
+          <div className="font-orbitron text-xs tracking-[0.4em] text-gray-400 mb-3">WELCOME</div>
           <h1 className="font-orbitron font-black text-2xl tracking-widest text-white">
             {mode === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}
           </h1>
@@ -212,7 +212,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-3 mt-4 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               style={primaryBtnStyle}>
               {loading ? "PLEASE WAIT..." : mode === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}
             </button>
@@ -262,9 +262,9 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-gray-600 text-xs mt-6 text-center">
+        {/* <p className="text-gray-600 text-xs mt-6 text-center">
           3 free games on signup · No credit card required
-        </p>
+        </p> */}
       </div>
     </main>
   );
