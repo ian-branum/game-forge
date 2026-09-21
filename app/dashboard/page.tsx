@@ -1175,7 +1175,7 @@ function DashboardInner() {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
-                    {["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED", "VERSIONS", "VISIBILITY", "ACTIONS"].map(h => (
+                    {["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED", "VERSIONS", "VISIBILITY"].map(h => (
                       <th key={h} className="text-left pb-3 font-orbitron text-[10px] tracking-widest text-gray-600 pr-4 last:pr-0 whitespace-nowrap">
                         {h}
                       </th>
@@ -1188,9 +1188,10 @@ function DashboardInner() {
                     return (
                       <tr
                         key={s.id}
-                        className="border-b transition"
+                        className="border-b transition cursor-pointer"
                         style={{ borderColor: "#1e2a4a11" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "#ffffff05")}
+                        onClick={() => setModalScenario(s)}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#4488ff08")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
 
                         <td className="py-3 pr-4 whitespace-nowrap">
@@ -1242,23 +1243,7 @@ function DashboardInner() {
                           </span>
                         </td>
 
-                        <td className="py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/play/${s.id}`}
-                              className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                              style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
-                              ▶ PLAY
-                            </Link>
 
-                            <button
-                              onClick={() => setModalScenario(s)}
-                              className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-90"
-                              style={{ background: `${m.color}22`, border: `1px solid ${m.color}55`, color: m.color }}>
-                              ✏ MODIFY
-                            </button>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
