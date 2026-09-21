@@ -3,7 +3,6 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-type Tab = "google" | "email";
 type Mode = "signin" | "signup";
 
 const inputStyle: React.CSSProperties = {
@@ -26,9 +25,25 @@ const labelStyle: React.CSSProperties = {
   marginBottom: "0.35rem",
 };
 
+const primaryBtnStyle: React.CSSProperties = {
+  minHeight: "44px",
+  background: "linear-gradient(135deg, #4488ff22, #4488ff44)",
+  border: "2px solid #4488ff66",
+  color: "#4488ff",
+};
+
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3 my-1">
+      <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
+      <span className="font-orbitron text-xs tracking-widest text-gray-600">OR</span>
+      <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("email");
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -95,8 +110,13 @@ export default function LoginPage() {
     }
   }
 
-  function switchMode() {
-    setMode(m => (m === "signin" ? "signup" : "signin"));
+  function goSignup() {
+    setMode("signup");
+    setError(null);
+  }
+
+  function goSignin() {
+    setMode("signin");
     setError(null);
   }
 
@@ -112,27 +132,6 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        {/* Tab switch */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          {(["google", "email"] as Tab[]).map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setTab(t);
-                setError(null);
-              }}
-              className="py-2.5 rounded-lg font-orbitron text-xs tracking-widest transition"
-              style={
-                tab === t
-                  ? { background: "#4488ff22", border: "1px solid #4488ff66", color: "#4488ff" }
-                  : { background: "transparent", border: "1px solid #1e2a4a", color: "#64748b" }
-              }>
-              {t === "google" ? "GOOGLE" : "EMAIL"}
-            </button>
-          ))}
-        </div>
-
         <div
           className="rounded-2xl p-6"
           style={{ background: "#070d20", border: "1px solid #1e2a4a", boxShadow: "0 0 30px #4488ff11" }}>
@@ -142,121 +141,119 @@ export default function LoginPage() {
             </div>
           )}
 
-          {tab === "google" ? (
-            <button
-              type="button"
-              onClick={handleGoogle}
-              className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-orbitron font-bold text-sm tracking-widest transition hover:scale-[1.02]"
-              style={{
-                minHeight: "44px",
-                background: "linear-gradient(135deg, #4488ff22, #4488ff44)",
-                border: "2px solid #4488ff66",
-                color: "#4488ff",
-              }}>
-              <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-                <path
-                  d="M43.6 20.2H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.8z"
-                  fill="#4488ff"
-                  opacity="0.7"
-                />
-              </svg>
-              SIGN IN WITH GOOGLE
-            </button>
-          ) : (
-            <form onSubmit={handleEmail} className="space-y-4">
-              {mode === "signup" && (
-                <div>
-                  <label style={labelStyle} className="font-orbitron">
-                    DISPLAY NAME
-                  </label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    placeholder="Commander Shepard"
-                    autoComplete="nickname"
-                  />
-                  <p className="text-gray-600 text-xs mt-1">This is what other players will see</p>
-                </div>
-              )}
-
+          <form onSubmit={handleEmail} className="space-y-4">
+            {mode === "signup" && (
               <div>
                 <label style={labelStyle} className="font-orbitron">
-                  EMAIL
+                  DISPLAY NAME
                 </label>
                 <input
                   style={inputStyle}
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
+                  type="text"
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  placeholder="Commander Shepard"
+                  autoComplete="nickname"
                 />
+                <p className="text-gray-600 text-xs mt-1">This is what other players will see</p>
               </div>
+            )}
 
+            <div>
+              <label style={labelStyle} className="font-orbitron">
+                EMAIL
+              </label>
+              <input
+                style={inputStyle}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle} className="font-orbitron">
+                PASSWORD
+              </label>
+              <input
+                style={inputStyle}
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              />
+            </div>
+
+            {mode === "signup" && (
               <div>
                 <label style={labelStyle} className="font-orbitron">
-                  PASSWORD
+                  CONFIRM PASSWORD
                 </label>
                 <input
                   style={inputStyle}
                   type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  autoComplete="new-password"
                 />
               </div>
+            )}
 
-              {mode === "signup" && (
-                <div>
-                  <label style={labelStyle} className="font-orbitron">
-                    CONFIRM PASSWORD
-                  </label>
-                  <input
-                    style={inputStyle}
-                    type="password"
-                    value={confirm}
-                    onChange={e => setConfirm(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-              )}
+            {/* Primary action button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              style={primaryBtnStyle}>
+              {loading ? "PLEASE WAIT..." : mode === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}
+            </button>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                style={{
-                  minHeight: "44px",
-                  background: "linear-gradient(135deg, #4488ff22, #4488ff44)",
-                  border: "2px solid #4488ff66",
-                  color: "#4488ff",
-                }}>
-                {loading ? "PLEASE WAIT..." : mode === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}
-              </button>
+            {/* OR + Gmail — only in sign-in mode */}
+            {mode === "signin" && (
+              <>
+                <OrDivider />
 
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02]"
+                  style={primaryBtnStyle}>
+                  <svg width="16" height="16" viewBox="0 0 48 48" fill="none">
+                    <path
+                      d="M43.6 20.2H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.8z"
+                      fill="#4488ff"
+                      opacity="0.7"
+                    />
+                  </svg>
+                  SIGN IN WITH GMAIL
+                </button>
+
+                <OrDivider />
+
+                <button
+                  type="button"
+                  onClick={goSignup}
+                  className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02]"
+                  style={primaryBtnStyle}>
+                  CREATE ACCOUNT
+                </button>
+              </>
+            )}
+
+            {/* Back link in signup mode */}
+            {mode === "signup" && (
               <p className="text-center text-xs text-gray-500 pt-1">
-                {mode === "signin" ? (
-                  <>
-                    Don&apos;t have an account?{" "}
-                    <button type="button" onClick={switchMode} className="text-[#4488ff] hover:underline">
-                      Create one
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Already have an account?{" "}
-                    <button type="button" onClick={switchMode} className="text-[#4488ff] hover:underline">
-                      Sign in
-                    </button>
-                  </>
-                )}
+                Already have an account?{" "}
+                <button type="button" onClick={goSignin} className="text-[#4488ff] hover:underline">
+                  Sign in
+                </button>
               </p>
-            </form>
-          )}
+            )}
+          </form>
         </div>
 
         <p className="text-gray-600 text-xs mt-6 text-center">
