@@ -34,7 +34,7 @@ const primaryBtnStyle: React.CSSProperties = {
 
 function OrDivider() {
   return (
-    <div className="flex items-center gap-3 my-1">
+    <div className="flex items-center gap-3">
       <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
       <span className="font-orbitron text-xs tracking-widest text-gray-600">OR</span>
       <div className="flex-1 h-px" style={{ background: "#1e2a4a" }} />
@@ -141,7 +141,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleEmail} className="space-y-4">
+          <form onSubmit={handleEmail} className="flex flex-col gap-5">
             {mode === "signup" && (
               <div>
                 <label style={labelStyle} className="font-orbitron">
