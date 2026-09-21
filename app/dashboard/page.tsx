@@ -347,13 +347,13 @@ function ModifyModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[18vh] pb-8"
       style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
       onClick={e => { if (e.target === e.currentTarget) { e.stopPropagation(); onClose(); } }}>
 
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
-        style={{ background: "#070d20", border: `1px solid ${meta.color}44`, boxShadow: `0 0 60px ${meta.color}22` }}>
+        className="w-full max-w-2xl flex flex-col rounded-2xl overflow-hidden"
+        style={{ maxHeight: "78vh", background: "#070d20", border: `1px solid ${meta.color}44`, boxShadow: `0 0 60px ${meta.color}22` }}>
 
         {/* ── Header: type badge, title, description, share, close ── */}
         <div className="px-6 pt-5 pb-4 border-b flex-shrink-0"
@@ -442,8 +442,8 @@ function ModifyModal({
           )}
         </div>
 
-        {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* ── Body — sizes to content, scrolls only if it overflows ── */}
+        <div className="overflow-y-auto px-6 py-5">
 
           {/* ── MODIFY tab ── */}
           {(modalTab === "modify" || !isOwner) && (
