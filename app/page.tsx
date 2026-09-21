@@ -73,7 +73,7 @@ export default function LandingPage() {
         className="flex flex-col items-center justify-center text-center px-6 py-24"
         style={{ background: "linear-gradient(180deg, #070d20 0%, #05071a 100%)", borderBottom: "1px solid #1e2a4a" }}>
 
-        <div className="font-orbitron text-xs tracking-[0.4em] text-gray-500 mb-4 uppercase">
+        <div className="font-orbitron text-xs tracking-[0.4em] text-gray-400 mb-4 uppercase">
           AI · Games · On Demand
         </div>
 
@@ -84,10 +84,10 @@ export default function LandingPage() {
           <span style={{ color: "#4488ff" }}> FORGE</span>
         </h1>
 
-        <p className="text-gray-300 text-lg max-w-xl mb-2">
+        <p className="text-gray-200 text-lg max-w-xl mb-2">
           Describe any game in plain English.
         </p>
-        <p className="text-gray-500 text-base max-w-xl mb-10">
+        <p className="text-gray-400 text-base max-w-xl mb-10">
           AI generates a unique, fully playable game in seconds — any board game, any variant, any rules.
         </p>
 
@@ -101,13 +101,13 @@ export default function LandingPage() {
           Get Started · Free
         </button>
 
-        <p className="text-gray-600 text-xs mt-4">
+        <p className="text-gray-400 text-xs mt-4">
           3 free games on signup · No credit card required
         </p>
 
         <a
           href="#how-it-works"
-          className="mt-10 text-gray-600 hover:text-gray-400 text-xs font-orbitron tracking-widest transition flex flex-col items-center gap-2">
+          className="mt-10 text-gray-500 hover:text-gray-300 text-xs font-orbitron tracking-widest transition flex flex-col items-center gap-2">
           SEE HOW IT WORKS
           <span className="animate-bounce">↓</span>
         </a>
@@ -125,10 +125,10 @@ export default function LandingPage() {
             { n: "03", icon: "🎮", title: "Play & Modify", body: "Jump straight in. Tweak anything with a follow-up prompt — new pieces, different rules, bigger board." },
           ].map(step => (
             <div key={step.n} className="flex flex-col items-center">
-              <div className="font-orbitron text-xs text-gray-600 mb-2 tracking-widest">{step.n}</div>
+              <div className="font-orbitron text-xs text-gray-500 mb-2 tracking-widest">{step.n}</div>
               <div className="text-3xl mb-3">{step.icon}</div>
               <div className="font-orbitron font-bold text-sm text-white mb-2">{step.title}</div>
-              <div className="text-gray-500 text-sm leading-relaxed">{step.body}</div>
+              <div className="text-gray-400 text-sm leading-relaxed">{step.body}</div>
             </div>
           ))}
         </div>
@@ -140,7 +140,7 @@ export default function LandingPage() {
           <h2 className="font-orbitron font-black text-center text-white text-2xl tracking-widest mb-2">
             3 GAME ENGINES
           </h2>
-          <p className="text-center text-gray-500 text-sm mb-12">
+          <p className="text-center text-gray-400 text-sm mb-12">
             One prompt. Three ways to play.
           </p>
 
@@ -164,7 +164,7 @@ export default function LandingPage() {
                     <span className="ml-auto text-[9px] font-orbitron tracking-widest text-gray-600">SOON</span>
                   )}
                 </div>
-                <p className="text-gray-400 text-xs leading-relaxed">{e.desc}</p>
+                <p className="text-gray-300 text-xs leading-relaxed">{e.desc}</p>
               </div>
             ))}
           </div>
@@ -173,7 +173,7 @@ export default function LandingPage() {
           <h3 className="font-orbitron font-black text-center text-white text-lg tracking-widest mb-2">
             PLAY NOW
           </h3>
-          <p className="text-center text-gray-600 text-xs mb-8">
+          <p className="text-center text-gray-400 text-xs mb-8">
             Real games forged by players — sign in to play
           </p>
 
@@ -190,8 +190,8 @@ export default function LandingPage() {
                     href={`/play/${s.id}`}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg transition hover:opacity-80"
                     style={{ background: "#4488ff11", border: "1px solid #4488ff33" }}>
-                    <span className="text-gray-600 text-xs font-orbitron">▶</span>
-                    <span className="text-sm text-gray-300 truncate">{s.title}</span>
+                    <span className="text-gray-400 text-xs font-orbitron">▶</span>
+                    <span className="text-sm text-gray-200 truncate">{s.title}</span>
                   </a>
                 )) : (
                   <div className="px-4 py-3 rounded-lg text-xs text-gray-600 font-orbitron tracking-widest"
@@ -214,8 +214,8 @@ export default function LandingPage() {
                     href={`/play/${s.id}`}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg transition hover:opacity-80"
                     style={{ background: "#f9731611", border: "1px solid #f9731633" }}>
-                    <span className="text-gray-600 text-xs font-orbitron">▶</span>
-                    <span className="text-sm text-gray-300 truncate">{s.title}</span>
+                    <span className="text-gray-400 text-xs font-orbitron">▶</span>
+                    <span className="text-sm text-gray-200 truncate">{s.title}</span>
                   </a>
                 )) : (
                   <div className="px-4 py-3 rounded-lg text-xs text-gray-600 font-orbitron tracking-widest"
@@ -236,7 +236,7 @@ export default function LandingPage() {
         <h2 className="font-orbitron font-black text-white text-2xl tracking-widest mb-3">
           READY TO FORGE?
         </h2>
-        <p className="text-gray-500 text-sm mb-8 max-w-md">
+        <p className="text-gray-400 text-sm mb-8 max-w-md">
           Sign up free and get 3 credits to start. No credit card required.
         </p>
         <button
