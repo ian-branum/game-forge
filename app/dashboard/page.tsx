@@ -556,7 +556,7 @@ function ModifyModal({
                           onChange={e => {
                             const val = Number(e.target.value);
                             setPubPriceToPlay(val);
-                            if (pubClonable && pubPriceToClone < val) setPubPriceToClone(val);
+                            if (pubPriceToClone < val) setPubPriceToClone(val);
                           }}
                           style={{ ...inputStyle }} />
                         <span className="text-gray-500 text-xs flex-shrink-0">credits</span>
