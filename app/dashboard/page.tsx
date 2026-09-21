@@ -838,6 +838,7 @@ function DashboardInner() {
   // Play tab state
   const [playScenarios, setPlayScenarios] = useState<PlayScenario[]>([]);
   const [playLoading, setPlayLoading] = useState(false);
+  const [playCategory, setPlayCategory] = useState<string>("all");
 
   // Buy tab state
   const [market, setMarket] = useState<MarketplaceScenario[]>([]);
@@ -895,14 +896,16 @@ function DashboardInner() {
   const loadPlay = useCallback(() => {
     if (status !== "authenticated" || activeTab !== "play") return;
     setPlayLoading(true);
-    fetch(`/api/scenarios?mode=play`)
+    const params = new URLSearchParams({ mode: "play" });
+    if (playCategory !== "all") params.set("category", playCategory);
+    fetch(`/api/scenarios?${params}`)
       .then(r => r.json())
       .then(data => {
         setPlayScenarios(data.scenarios ?? []);
         setPlayLoading(false);
       })
       .catch(() => setPlayLoading(false));
-  }, [status, activeTab]);
+  }, [status, activeTab, playCategory]);
 
   useEffect(() => { loadPlay(); }, [loadPlay]);
 
@@ -1064,6 +1067,28 @@ function DashboardInner() {
           </div>
 
           <div className="flex-1" />
+        </div>
+      )}
+
+      {/* ── Play filters bar ───────────────────────────────────────────── */}
+      {activeTab === "play" && (
+        <div
+          className="sticky top-[56px] z-10 border-b px-6 py-2.5 flex items-center gap-3 flex-wrap"
+          style={{ borderColor: "#0d1530", background: "#05071a" }}>
+          <span className="font-orbitron text-[9px] tracking-[0.3em] text-gray-700 uppercase flex-shrink-0">
+            PLAY
+          </span>
+
+          <select
+            value={playCategory}
+            onChange={e => setPlayCategory(e.target.value)}
+            className="font-orbitron text-xs tracking-widest rounded-lg px-3 py-2 cursor-pointer flex-shrink-0"
+            style={{ background: "#0a1128", border: "1px solid #1e2a4a", color: "#9ca3af", outline: "none" }}>
+            <option value="all">ALL TYPES</option>
+            <option value="sandbox">🎮 Games &amp; Puzzles</option>
+            <option value="tactical">⚔️ WW2 Tactical</option>
+            <option value="narrative">📖 Adventure</option>
+          </select>
         </div>
       )}
 

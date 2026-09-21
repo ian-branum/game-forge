@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
 
   // ── PLAY tab: everything I can play = my own games ∪ originals I hold a license for ──
   if (mode === "play") {
+    const playCategory = searchParams.get("category");
+    const categoryFilter = playCategory && playCategory !== "all" ? { category: playCategory } : {};
+
     const playSelect = {
       id: true,
       title: true,
@@ -26,7 +29,7 @@ export async function GET(req: NextRequest) {
     } as const;
 
     const mine = await prisma.scenario.findMany({
-      where: { userId, archived: false },
+      where: { userId, archived: false, ...categoryFilter },
       orderBy: { createdAt: "desc" },
       select: playSelect,
     });
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     const licensed = licensedIds.length
       ? await prisma.scenario.findMany({
-          where: { id: { in: licensedIds }, archived: false },
+          where: { id: { in: licensedIds }, archived: false, ...categoryFilter },
           orderBy: { createdAt: "desc" },
           select: playSelect,
         })
