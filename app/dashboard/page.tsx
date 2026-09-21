@@ -103,6 +103,16 @@ const creatorUrl = (name: string) => `/dashboard?tab=buy&creator=${encodeURIComp
 
 // ─── Modify Modal ────────────────────────────────────────────────────────────
 
+// Credit costs surfaced in the UI (must match lib/pricing.ts)
+const MODIFY_COSTS: Record<string, { codeModify: number; regenerate: number }> = {
+  sandbox:   { codeModify: 1, regenerate: 2 },
+  tactical:  { codeModify: 1, regenerate: 2 },
+  narrative: { codeModify: 2, regenerate: 3 },
+};
+
+type ModalTab = "modify" | "publish";
+type ModifyMode = "codeModify" | "regenerate";
+
 function ModifyModal({
   scenario,
   currentUserId,
@@ -118,6 +128,10 @@ function ModifyModal({
 }) {
   const meta = CATEGORY_META[scenario.category] ?? CATEGORY_META.sandbox;
   const isOwner = scenario.userId === currentUserId;
+  const costs = MODIFY_COSTS[scenario.category] ?? MODIFY_COSTS.sandbox;
+
+  const [modalTab, setModalTab] = useState<ModalTab>("modify");
+  const [modifyMode, setModifyMode] = useState<ModifyMode>("codeModify");
 
   const [versions, setVersions] = useState<GameVersion[]>(scenario.versions ?? []);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(scenario.activeVersionId ?? null);
@@ -125,14 +139,14 @@ function ModifyModal({
   const [settingActiveId, setSettingActiveId] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
 
-  // Editable title / description
+  // Editable title / description (always visible in header area)
   const [title, setTitle] = useState(scenario.title);
   const [description, setDescription] = useState(scenario.description ?? "");
   const [detailsSaved, setDetailsSaved] = useState(false);
   const detailsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [modifyPrompt, setModifyPrompt] = useState("");
-  const [modifying, setModifying] = useState(false);
+  const [working, setWorking] = useState(false);
   const [modifyError, setModifyError] = useState("");
 
   const [copiedId, setCopiedId] = useState(false);
@@ -169,15 +183,14 @@ function ModifyModal({
     if (!isOwner) return;
     const trimmedTitle = title.trim();
     const trimmedDesc = description.trim();
-    const payload: { title?: string; description?: string } = {};
-    if (trimmedTitle !== scenario.title && trimmedTitle.length >= 1) payload.title = trimmedTitle;
-    if (trimmedDesc !== (scenario.description ?? "")) payload.description = trimmedDesc;
-    if (Object.keys(payload).length === 0) return;
-
+    const patch: { title?: string; description?: string } = {};
+    if (trimmedTitle !== scenario.title && trimmedTitle.length >= 1) patch.title = trimmedTitle;
+    if (trimmedDesc !== (scenario.description ?? "")) patch.description = trimmedDesc;
+    if (Object.keys(patch).length === 0) return;
     const res = await fetch(`/api/scenarios/${scenario.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(patch),
     });
     if (res.ok) {
       const data = (await res.json().catch(() => ({}))) as { title?: string; description?: string | null };
@@ -209,9 +222,10 @@ function ModifyModal({
     copiedTimer.current = setTimeout(() => setCopiedId(false), 2000);
   };
 
-  const handleModify = async () => {
+  // Code Modify: existing code + new instruction
+  const handleCodeModify = async () => {
     if (!modifyPrompt.trim()) return;
-    setModifying(true);
+    setWorking(true);
     setModifyError("");
     try {
       const res = await fetch(`/api/scenarios/${scenario.id}/modify`, {
@@ -233,7 +247,30 @@ function ModifyModal({
     } catch {
       setModifyError("Something went wrong. Please try again.");
     } finally {
-      setModifying(false);
+      setWorking(false);
+    }
+  };
+
+  // Regenerate: prompts only → fresh code
+  const handleRegenerate = async () => {
+    setWorking(true);
+    setModifyError("");
+    try {
+      const res = await fetch(`/api/scenarios/${scenario.id}/regenerate`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 402) { setModifyError("Not enough credits"); return; }
+      if (!res.ok) { setModifyError(data.error ?? "Regenerate failed"); return; }
+      const newVersion = data.version as GameVersion | undefined;
+      if (newVersion) {
+        const updated = [...versions, newVersion];
+        setVersions(updated);
+        setActiveVersionId(newVersion.id);
+        onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
+      }
+    } catch {
+      setModifyError("Something went wrong. Please try again.");
+    } finally {
+      setWorking(false);
     }
   };
 
@@ -266,20 +303,15 @@ function ModifyModal({
     }
   };
 
-  const savePublish = async (overrides?: Partial<{
-    isPublic: boolean; isClonable: boolean; clonesMayRepublish: boolean;
-    priceToPlay: number; priceToClone: number; freePlayLimit: number; adventureSubtype: string;
-  }>) => {
+  const savePublish = async () => {
     const payload = {
-      isPublic: overrides?.isPublic ?? pubPublic,
-      isClonable: overrides?.isClonable ?? pubClonable,
-      clonesMayRepublish: overrides?.clonesMayRepublish ?? pubRepublish,
-      priceToPlay: overrides?.priceToPlay ?? pubPriceToPlay,
-      priceToClone: overrides?.priceToClone ?? pubPriceToClone,
-      freePlayLimit: overrides?.freePlayLimit ?? pubFreePlay,
-      adventureSubtype: scenario.category === "narrative"
-        ? (overrides?.adventureSubtype ?? pubAdventure)
-        : undefined,
+      isPublic: pubPublic,
+      isClonable: pubClonable,
+      clonesMayRepublish: pubRepublish,
+      priceToPlay: pubPriceToPlay,
+      priceToClone: pubPriceToClone,
+      freePlayLimit: pubFreePlay,
+      adventureSubtype: scenario.category === "narrative" ? pubAdventure : undefined,
     };
     setPubSaving(true);
     setPubError("");
@@ -310,6 +342,9 @@ function ModifyModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pubPublic, pubClonable, pubRepublish, pubPriceToPlay, pubPriceToClone, pubFreePlay, pubAdventure]);
 
+  // Label for the "V1" entry (the original game)
+  const v1Label = scenario.prompt;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -320,11 +355,13 @@ function ModifyModal({
         className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
         style={{ background: "#070d20", border: `1px solid ${meta.color}44`, boxShadow: `0 0 60px ${meta.color}22` }}>
 
-        {/* Modal header */}
-        <div className="px-6 py-4 border-b flex items-start justify-between gap-4 flex-shrink-0"
+        {/* ── Header: type badge, title, description, share, close ── */}
+        <div className="px-6 pt-5 pb-4 border-b flex-shrink-0"
           style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+
+          {/* Top row */}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xl">{meta.emoji}</span>
               <span className="font-orbitron text-xs tracking-widest" style={{ color: meta.color }}>{meta.label}</span>
               {pubPublic && (
@@ -333,231 +370,273 @@ function ModifyModal({
                   🌐 PUBLIC
                 </span>
               )}
+              <span className="font-orbitron text-[10px] tracking-widest text-gray-600">
+                Forged {new Date(scenario.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
             </div>
-            <h2 className="font-orbitron font-black text-xl text-white truncate">{title || scenario.title}</h2>
-            <p className="text-gray-600 text-xs mt-1">
-              Forged {new Date(scenario.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-            </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative">
+                <button onClick={handleShare}
+                  className="font-orbitron text-xs tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-80"
+                  style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#9ca3af" }}>
+                  SHARE
+                </button>
+                {copiedId && (
+                  <div className="absolute right-0 top-full mt-1 px-2 py-1 rounded font-orbitron text-[10px] tracking-widest whitespace-nowrap z-30"
+                    style={{ background: "#0a1128", border: "1px solid #22c55e44", color: "#22c55e" }}>
+                    Copied!
+                  </div>
+                )}
+              </div>
+              <button onClick={e => { e.stopPropagation(); onClose(); }}
+                className="ml-1 text-gray-500 hover:text-white transition text-xl leading-none"
+                style={{ fontFamily: "sans-serif" }}>
+                ×
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="relative">
-              <button
-                onClick={handleShare}
-                className="font-orbitron text-xs tracking-widest px-3 py-1.5 rounded-lg transition hover:opacity-80"
-                style={{ background: "#4488ff11", border: "1px solid #4488ff33", color: "#9ca3af" }}>
-                SHARE
-              </button>
-              {copiedId && (
-                <div className="absolute right-0 top-full mt-1 px-2 py-1 rounded font-orbitron text-[10px] tracking-widest whitespace-nowrap z-30"
-                  style={{ background: "#0a1128", border: "1px solid #22c55e44", color: "#22c55e" }}>
-                  Copied!
+          {/* Editable title + description — always visible */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={title}
+                readOnly={!isOwner}
+                onChange={e => setTitle(e.target.value)}
+                onBlur={handleDetailsBlur}
+                className="flex-1 font-orbitron font-black text-lg text-white bg-transparent border-b focus:outline-none"
+                style={{ borderColor: "#1e2a4a", opacity: isOwner ? 1 : 0.8 }}
+                placeholder="Untitled"
+              />
+              <span className="font-orbitron text-[10px] tracking-widest flex-shrink-0"
+                style={{ color: "#22c55e", opacity: detailsSaved ? 1 : 0, transition: "opacity 0.3s" }}>
+                ✓ SAVED
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              value={description}
+              readOnly={!isOwner}
+              onChange={e => setDescription(e.target.value)}
+              onBlur={handleDetailsBlur}
+              placeholder="No description yet — shown to players in the marketplace."
+              className="w-full resize-none bg-transparent text-sm text-gray-400 focus:outline-none"
+              style={{ opacity: isOwner ? 1 : 0.7 }}
+            />
+          </div>
+
+          {/* Inner tab bar */}
+          {isOwner && (
+            <div className="flex items-center gap-2 mt-3">
+              {(["modify", "publish"] as ModalTab[]).map(t => (
+                <button key={t} type="button" onClick={() => setModalTab(t)}
+                  className="font-orbitron text-xs tracking-widest px-4 py-1.5 rounded-full transition"
+                  style={modalTab === t
+                    ? { background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }
+                    : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
+                  {t === "modify" ? "MODIFY" : "PUBLISH"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+
+          {/* ── MODIFY tab ── */}
+          {(modalTab === "modify" || !isOwner) && (
+            <div className="space-y-6">
+
+              {/* V1 = original prompt */}
+              <div>
+                <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>
+                  VERSION HISTORY
+                </div>
+                <div className="divide-y" style={{ borderColor: "#1e2a4a" }}>
+
+                  {/* V1 — original, always shown */}
+                  <div className="flex items-start gap-3 py-2.5">
+                    <span className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded mt-0.5"
+                      style={{ background: `${meta.color}1a`, border: `1px solid ${meta.color}44`, color: meta.color }}>
+                      V1
+                    </span>
+                    <p className="text-gray-400 text-sm leading-relaxed italic flex-1 min-w-0 break-words">
+                      &ldquo;{v1Label}&rdquo;
+                    </p>
+                    {/* V1 is active only if there are no subsequent versions */}
+                    {versions.length === 0 && (
+                      <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full flex-shrink-0"
+                        style={{ background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e" }}>
+                        ● ACTIVE
+                      </span>
+                    )}
+                  </div>
+
+                  {/* V2+ from DB (versionNum stored as 1-based from old code, display as versionNum+1) */}
+                  {versions.map(v => {
+                    const displayNum = v.versionNum + 1;
+                    const isActive = v.id === activeVersionId;
+                    const isDeleting = deletingVersionId === v.id;
+                    const isSettingActive = settingActiveId === v.id;
+                    const isRegen = v.prompt.startsWith("REGENERATE:");
+                    return (
+                      <div key={v.id} className="flex items-center gap-3 py-2.5">
+                        <span className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
+                          style={{ background: `${meta.color}1a`, border: `1px solid ${meta.color}44`, color: meta.color }}>
+                          V{displayNum}
+                        </span>
+                        <p className="text-sm leading-relaxed flex-1 min-w-0 break-words"
+                          style={{ color: isRegen ? "#f97316" : "#9ca3af", fontStyle: "italic" }}>
+                          {isRegen
+                            ? v.prompt  // already formatted as "REGENERATE: <prompt>"
+                            : <>&ldquo;{v.prompt}&rdquo;</>
+                          }
+                        </p>
+                        {isActive && (
+                          <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full flex-shrink-0"
+                            style={{ background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e" }}>
+                            ● ACTIVE
+                          </span>
+                        )}
+                        {isOwner && (
+                          <>
+                            {!isActive && (
+                              <button onClick={() => handleSetActive(v.id)} disabled={isSettingActive}
+                                className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded flex-shrink-0 transition disabled:opacity-40"
+                                style={{ background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }}>
+                                {isSettingActive ? "…" : "SET ACTIVE"}
+                              </button>
+                            )}
+                            {versions.length > 1 && (
+                              <button onClick={() => handleDeleteVersion(v.id)} disabled={isDeleting}
+                                className="text-xs px-1.5 py-0.5 rounded flex-shrink-0 transition"
+                                style={{ color: "#ef4444", border: "1px solid #ef444422", background: "transparent", opacity: isDeleting ? 0.3 : 0.4 }}
+                                onMouseEnter={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                                onMouseLeave={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
+                                {isDeleting ? "…" : "🗑"}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modify controls — owner only */}
+              {isOwner && (
+                <div className="border-t pt-5" style={{ borderColor: "#1e2a4a" }}>
+
+                  {/* Mode toggle */}
+                  <div className="flex items-center gap-2 mb-4">
+                    {([
+                      { id: "codeModify", label: "CODE MODIFY", cost: costs.codeModify, desc: "Surgical edit — sends existing code + your instruction" },
+                      { id: "regenerate", label: "REGENERATE",  cost: costs.regenerate, desc: "Fresh build — re-runs all prompts, discards existing code" },
+                    ] as { id: ModifyMode; label: string; cost: number; desc: string }[]).map(m => (
+                      <button key={m.id} type="button"
+                        onClick={() => { setModifyMode(m.id); setModifyError(""); }}
+                        className="flex-1 py-2 px-3 rounded-lg font-orbitron text-[10px] tracking-widest transition text-center"
+                        style={modifyMode === m.id
+                          ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
+                          : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
+                        {m.label}
+                        <span className="block text-[9px] mt-0.5 opacity-70">{m.cost} credit{m.cost !== 1 ? "s" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Mode description */}
+                  <p className="text-gray-600 text-xs mb-3">
+                    {modifyMode === "codeModify"
+                      ? "Sends the existing game code plus your instruction. Best for targeted changes like colors, rules tweaks, or adding a feature."
+                      : "Discards the current code and regenerates from scratch using all prompts. Use when the game is broken or fundamentally wrong."}
+                  </p>
+
+                  {/* Prompt textarea — disabled for regenerate */}
+                  <textarea
+                    rows={3}
+                    value={modifyMode === "regenerate" ? "" : modifyPrompt}
+                    onChange={e => setModifyPrompt(e.target.value)}
+                    disabled={modifyMode === "regenerate"}
+                    placeholder={modifyMode === "regenerate"
+                      ? "No prompt needed — regenerates from existing prompts…"
+                      : "Describe what to change about this game…"}
+                    className="w-full resize-y mb-2"
+                    style={{
+                      ...inputStyle,
+                      opacity: modifyMode === "regenerate" ? 0.4 : 1,
+                      cursor: modifyMode === "regenerate" ? "not-allowed" : "auto",
+                    }}
+                  />
+
+                  <div className="flex items-center justify-end gap-3">
+                    {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
+                    <button
+                      onClick={modifyMode === "codeModify" ? handleCodeModify : handleRegenerate}
+                      disabled={working || (modifyMode === "codeModify" && !modifyPrompt.trim())}
+                      className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
+                      {working
+                        ? "FORGING…"
+                        : modifyMode === "codeModify"
+                          ? `CODE MODIFY — ${costs.codeModify} CR`
+                          : `REGENERATE — ${costs.regenerate} CR`}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-
-            <button
-              onClick={e => { e.stopPropagation(); onClose(); }}
-              className="ml-2 text-gray-500 hover:text-white transition text-xl leading-none"
-              style={{ fontFamily: "sans-serif" }}>
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Modal body — scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-
-          {/* Editable title + description */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-orbitron text-xs tracking-widest" style={{ color: meta.color }}>DETAILS</div>
-              <span className="font-orbitron text-[10px] tracking-widest" style={{ color: "#22c55e", opacity: detailsSaved ? 1 : 0, transition: "opacity 0.3s" }}>✓ SAVED</span>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">TITLE</label>
-                <input
-                  type="text"
-                  value={title}
-                  readOnly={!isOwner}
-                  onChange={e => setTitle(e.target.value)}
-                  onBlur={handleDetailsBlur}
-                  className="w-full"
-                  style={{ ...inputStyle, opacity: isOwner ? 1 : 0.7 }}
-                />
-              </div>
-              <div>
-                <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">DESCRIPTION</label>
-                <textarea
-                  rows={2}
-                  value={description}
-                  readOnly={!isOwner}
-                  onChange={e => setDescription(e.target.value)}
-                  onBlur={handleDetailsBlur}
-                  placeholder="No description yet."
-                  className="w-full resize-y"
-                  style={{ ...inputStyle, opacity: isOwner ? 1 : 0.7 }}
-                />
-                <p className="text-gray-600 text-xs mt-1">Shown to other players in the marketplace</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Original prompt */}
-          <div className="border-t pt-4" style={{ borderColor: "#1e2a4a" }}>
-            <div className="font-orbitron text-[10px] tracking-widest text-gray-500 mb-1">ORIGINAL PROMPT</div>
-            <p className="text-gray-300 text-sm leading-relaxed italic">&ldquo;{scenario.prompt}&rdquo;</p>
-          </div>
-
-          {/* Version history */}
-          <div>
-            <div className="font-orbitron text-xs tracking-widest mb-3" style={{ color: meta.color }}>
-              VERSION HISTORY
-            </div>
-            {versions.length === 0 ? (
-              <p className="text-gray-600 text-sm italic">No revisions yet.</p>
-            ) : (
-              <div className="space-y-0 divide-y" style={{ borderColor: "#1e2a4a" }}>
-                {versions.map(v => {
-                  const isActive = v.id === activeVersionId;
-                  const isDeleting = deletingVersionId === v.id;
-                  const isSettingActive = settingActiveId === v.id;
-                  return (
-                    <div key={v.id} className="flex items-center gap-3 py-2.5">
-                      <span className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
-                        style={{ background: `${meta.color}1a`, border: `1px solid ${meta.color}44`, color: meta.color }}>
-                        V{v.versionNum}
-                      </span>
-                      <p className="text-gray-300 text-sm leading-relaxed italic flex-1 min-w-0 break-words">
-                        &ldquo;{v.prompt}&rdquo;
-                      </p>
-                      {isActive && (
-                        <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full flex-shrink-0"
-                          style={{ background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e" }}>
-                          ● ACTIVE
-                        </span>
-                      )}
-                      {isOwner && (
-                        <>
-                          {!isActive && (
-                            <button
-                              onClick={() => handleSetActive(v.id)}
-                              disabled={isSettingActive}
-                              className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded flex-shrink-0 transition disabled:opacity-40"
-                              style={{ background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }}>
-                              {isSettingActive ? "…" : "SET ACTIVE"}
-                            </button>
-                          )}
-                          {versions.length > 1 && (
-                            <button
-                              onClick={() => handleDeleteVersion(v.id)}
-                              disabled={isDeleting}
-                              className="text-xs px-1.5 py-0.5 rounded flex-shrink-0 transition"
-                              style={{ color: "#ef4444", border: "1px solid #ef444422", background: "transparent", opacity: isDeleting ? 0.3 : 0.4, cursor: isDeleting ? "not-allowed" : "pointer" }}
-                              onMouseEnter={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                              onMouseLeave={e => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}>
-                              {isDeleting ? "…" : "🗑"}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Modify */}
-          {isOwner && (
-            <div>
-              <div className="font-orbitron text-xs tracking-widest text-gray-500 mb-2">MODIFY</div>
-              <textarea
-                rows={3}
-                value={modifyPrompt}
-                onChange={e => setModifyPrompt(e.target.value)}
-                placeholder="Describe what to change about this game…"
-                className="w-full resize-y"
-                style={{ ...inputStyle }}
-              />
-              <div className="flex items-center justify-end gap-3 mt-2">
-                {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
-                <button
-                  onClick={handleModify}
-                  disabled={modifying || !modifyPrompt.trim()}
-                  className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
-                  {modifying ? "FORGING…" : "MODIFY"}
-                </button>
-              </div>
-            </div>
           )}
 
-          {/* Publish */}
-          {isOwner && (
-            <div className="border-t pt-4" style={{ borderColor: "#1e2a4a" }}>
-              <div className="flex items-center justify-between mb-3">
+          {/* ── PUBLISH tab ── */}
+          {modalTab === "publish" && isOwner && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
                 <div className="font-orbitron text-xs tracking-widest" style={{ color: meta.color }}>
-                  PUBLISH TO MARKETPLACE
+                  MARKETPLACE SETTINGS
                 </div>
-                <span className="font-orbitron text-[10px] tracking-widest" style={{ color: "#22c55e", opacity: pubSaved ? 1 : 0, transition: "opacity 0.3s" }}>✓ SAVED</span>
+                <span className="font-orbitron text-[10px] tracking-widest"
+                  style={{ color: "#22c55e", opacity: pubSaved ? 1 : 0, transition: "opacity 0.3s" }}>
+                  {pubSaving ? "SAVING…" : "✓ SAVED"}
+                </span>
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer mb-4">
-                <input
-                  type="checkbox"
-                  checked={pubPublic}
-                  onChange={e => setPubPublic(e.target.checked)}
-                  className="w-4 h-4 accent-[#4488ff]"
-                />
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={pubPublic} onChange={e => setPubPublic(e.target.checked)} className="w-4 h-4 accent-[#4488ff]" />
                 <span className="text-sm text-gray-300">Make public</span>
               </label>
 
-              <label className="flex items-center gap-3 cursor-pointer mb-4">
-                <input
-                  type="checkbox"
-                  checked={pubClonable}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={pubClonable}
                   onChange={e => {
                     setPubClonable(e.target.checked);
-                    if (e.target.checked && pubPriceToClone < pubPriceToPlay) {
-                      setPubPriceToClone(pubPriceToPlay);
-                    }
+                    if (e.target.checked && pubPriceToClone < pubPriceToPlay) setPubPriceToClone(pubPriceToPlay);
                   }}
-                  className="w-4 h-4 accent-[#4488ff]"
-                />
+                  className="w-4 h-4 accent-[#4488ff]" />
                 <span className="text-sm text-gray-300">Allow cloning</span>
               </label>
 
               {pubClonable && (
-                <div className="ml-7 mb-4">
+                <div className="ml-7">
                   <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pubRepublish}
-                      onChange={e => setPubRepublish(e.target.checked)}
-                      className="w-4 h-4 accent-[#4488ff]"
-                    />
+                    <input type="checkbox" checked={pubRepublish} onChange={e => setPubRepublish(e.target.checked)} className="w-4 h-4 accent-[#4488ff]" />
                     <span className="text-sm text-gray-300">Allow clones to be republished</span>
                   </label>
-                  <p className="text-gray-600 text-xs mt-2">
-                    If unchecked, players who clone this game cannot publish their fork publicly.
-                  </p>
+                  <p className="text-gray-600 text-xs mt-2">If unchecked, players who clone this game cannot publish their fork publicly.</p>
                 </div>
               )}
 
               {pubPublic && (
-                <div className="space-y-4">
+                <div className="space-y-4 pt-2 border-t" style={{ borderColor: "#1e2a4a" }}>
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO PLAY</label>
                       <div className="flex items-center gap-2">
                         <input type="number" min={0} value={pubPriceToPlay}
-                          onChange={e => {
-                            const val = Number(e.target.value);
-                            setPubPriceToPlay(val);
-                            if (pubPriceToClone < val) setPubPriceToClone(val);
-                          }}
+                          onChange={e => { const val = Number(e.target.value); setPubPriceToPlay(val); if (pubPriceToClone < val) setPubPriceToClone(val); }}
                           style={{ ...inputStyle }} />
                         <span className="text-gray-500 text-xs flex-shrink-0">credits</span>
                       </div>
@@ -565,8 +644,7 @@ function ModifyModal({
                     <div className="flex-1">
                       <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-1">PRICE TO CLONE</label>
                       <div className="flex items-center gap-2">
-                        <input type="number" min={0} value={pubPriceToClone}
-                          disabled={!pubClonable}
+                        <input type="number" min={0} value={pubPriceToClone} disabled={!pubClonable}
                           onChange={e => setPubPriceToClone(Number(e.target.value))}
                           style={{ ...inputStyle, opacity: pubClonable ? 1 : 0.35, cursor: pubClonable ? "auto" : "not-allowed" }} />
                         <span className="text-gray-500 text-xs flex-shrink-0">credits</span>
@@ -578,10 +656,7 @@ function ModifyModal({
                     <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-2">FREE TRIAL</label>
                     <div className="flex items-center gap-2">
                       {[1, 3].map(n => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setPubFreePlay(n)}
+                        <button key={n} type="button" onClick={() => setPubFreePlay(n)}
                           className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition"
                           style={pubFreePlay === n
                             ? { background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }
@@ -597,10 +672,7 @@ function ModifyModal({
                       <label className="block font-orbitron text-xs tracking-widest text-gray-500 mb-2">ADVENTURE TYPE</label>
                       <div className="flex items-center gap-2 flex-wrap">
                         {ADVENTURE_SUBTYPES.map(s => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setPubAdventure(s.id)}
+                          <button key={s.id} type="button" onClick={() => setPubAdventure(s.id)}
                             className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition"
                             style={pubAdventure === s.id
                               ? { background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }
@@ -614,13 +686,14 @@ function ModifyModal({
                 </div>
               )}
 
-              {pubError && <p className="text-red-400 text-xs mt-3">{pubError}</p>}
+              {pubError && <p className="text-red-400 text-xs">{pubError}</p>}
             </div>
           )}
         </div>
 
-        {/* Modal footer */}
-        <div className="px-6 py-4 border-t flex-shrink-0 flex items-center justify-between gap-3" style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
+        {/* ── Footer: archive + play ── */}
+        <div className="px-6 py-4 border-t flex-shrink-0 flex items-center justify-between gap-3"
+          style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
           {isOwner ? (
             <button
               onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
@@ -629,9 +702,7 @@ function ModifyModal({
               style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
               {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
             </button>
-          ) : (
-            <span />
-          )}
+          ) : <span />}
           <Link
             href={`/play/${scenario.id}`}
             className="px-6 py-2.5 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"

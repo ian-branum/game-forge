@@ -15,25 +15,17 @@ export async function POST(
 
   const { id } = await params;
 
-  const body = await req.json().catch(() => null);
-  const modificationPrompt =
-    typeof body?.modificationPrompt === "string" ? body.modificationPrompt.trim() : "";
-  if (!modificationPrompt) {
-    return NextResponse.json({ error: "modificationPrompt must be a non-empty string" }, { status: 400 });
-  }
-
-  // Only the owner can modify their own scenario
   const scenario = await prisma.scenario.findUnique({ where: { id } });
   if (!scenario) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (scenario.userId !== session.user.id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // Credit check — cost comes from pricing config
   const serverPlugin = getServerPlugin(scenario.category);
   if (!serverPlugin) {
     return NextResponse.json({ error: `Unknown category: ${scenario.category}` }, { status: 400 });
   }
-  const cost = getCost("codeModify", scenario.category);
+
+  const cost = getCost("regenerate", scenario.category);
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user || user.credits < cost) {
     return NextResponse.json(
@@ -42,7 +34,7 @@ export async function POST(
     );
   }
 
-  // Fetch all existing versions (ascending) to build the chained prompt
+  // Build the full prompt chain: original prompt + all version modify prompts (asc)
   const versions = await prisma.gameVersion.findMany({
     where: { scenarioId: id },
     orderBy: { versionNum: "asc" },
@@ -50,31 +42,28 @@ export async function POST(
   });
 
   const chainedPrompt = [
-    ...versions.map((v) => `[Version ${v.versionNum}]: ${v.prompt}`),
-    `[Modification]: ${modificationPrompt}`,
+    scenario.prompt,
+    ...versions.map((v) => `[Modification ${v.versionNum}]: ${v.prompt}`),
   ].join("\n");
 
-  // Run the generator via the plugin registry. Sandbox games need the existing
-  // HTML fed back to the model (not just the chained text prompts).
+  // Re-run the generator with the chained prompts only (no existing code)
   let payload: unknown;
   try {
-    if (scenario.category === "sandbox") {
-      const { modifySandboxScenario } = await import("@/games/sandbox/generator");
-      const existingHtml = (scenario.payload as unknown as { html?: string } | null)?.html ?? "";
-      payload = await modifySandboxScenario(existingHtml, modificationPrompt);
-    } else {
-      payload = await serverPlugin.generate(chainedPrompt);
-    }
+    payload = await serverPlugin.generate(chainedPrompt);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[/api/scenarios/modify] Generation failed:", msg, stack);
-    return NextResponse.json({ error: msg, stack }, { status: 500 });
+    console.error("[/api/scenarios/regenerate] Generation failed:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 
-  // Next version number = one past the highest existing (handles gaps after deletions)
   const nextVersionNum =
     versions.length > 0 ? versions[versions.length - 1].versionNum + 1 : 1;
+
+  // The prompt stored for a regeneration describes what was regenerated from
+  const regenerateLabel =
+    versions.length > 0
+      ? `REGENERATE: ${versions[versions.length - 1].prompt}`
+      : `REGENERATE: ${scenario.prompt}`;
 
   const userId = session.user.id;
 
@@ -83,13 +72,12 @@ export async function POST(
       data: {
         scenarioId: id,
         versionNum: nextVersionNum,
-        prompt: modificationPrompt,
+        prompt: regenerateLabel,
         payload: payload as object,
       },
       select: { id: true, versionNum: true, prompt: true, createdAt: true },
     });
 
-    // New version becomes active; keep scenario.payload in sync (play page reads it)
     await tx.scenario.update({
       where: { id },
       data: { payload: payload as object, activeVersionId: created.id },
@@ -101,11 +89,7 @@ export async function POST(
     });
 
     await tx.creditTransaction.create({
-      data: {
-        userId,
-        amount: -cost,
-        reason: "codeModify",
-      },
+      data: { userId, amount: -cost, reason: "regenerate" },
     });
 
     return created;
