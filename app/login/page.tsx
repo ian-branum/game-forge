@@ -141,68 +141,73 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleEmail} className="flex flex-col gap-5">
-            {mode === "signup" && (
+          <form onSubmit={handleEmail} className="flex flex-col">
+            {/* ── Input group ── */}
+            <div className="flex flex-col gap-6">
+              {mode === "signup" && (
+                <div>
+                  <label style={labelStyle} className="font-orbitron">
+                    DISPLAY NAME
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    placeholder="Commander Shepard"
+                    autoComplete="nickname"
+                  />
+                  <p className="text-gray-600 text-xs mt-1">This is what other players will see</p>
+                </div>
+              )}
+
               <div>
                 <label style={labelStyle} className="font-orbitron">
-                  DISPLAY NAME
+                  EMAIL
                 </label>
                 <input
                   style={inputStyle}
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder="Commander Shepard"
-                  autoComplete="nickname"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
                 />
-                <p className="text-gray-600 text-xs mt-1">This is what other players will see</p>
               </div>
-            )}
 
-            <div>
-              <label style={labelStyle} className="font-orbitron">
-                EMAIL
-              </label>
-              <input
-                style={inputStyle}
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle} className="font-orbitron">
-                PASSWORD
-              </label>
-              <input
-                style={inputStyle}
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              />
-            </div>
-
-            {mode === "signup" && (
               <div>
                 <label style={labelStyle} className="font-orbitron">
-                  CONFIRM PASSWORD
+                  PASSWORD
                 </label>
                 <input
                   style={inputStyle}
                   type="password"
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete="new-password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 />
               </div>
-            )}
 
+              {mode === "signup" && (
+                <div>
+                  <label style={labelStyle} className="font-orbitron">
+                    CONFIRM PASSWORD
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="password"
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* ── Button group ── */}
+            <div className="flex flex-col gap-5 mt-6">
             {/* Primary action button */}
             <button
               type="submit"
@@ -253,6 +258,7 @@ export default function LoginPage() {
                 </button>
               </p>
             )}
+            </div>{/* end button group */}
           </form>
         </div>
 
