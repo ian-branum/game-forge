@@ -54,7 +54,10 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError(null);
+    setLoading(true);
     await signIn("google", { callbackUrl: "/dashboard" });
+    // signIn redirects on success; only reaches here on error
+    setLoading(false);
   }
 
   async function handleEmail(e: FormEvent) {
@@ -225,7 +228,8 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleGoogle}
-                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02]"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                   style={primaryBtnStyle}>
                   <svg width="16" height="16" viewBox="0 0 48 48" fill="none">
                     <path
@@ -242,7 +246,8 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={goSignup}
-                  className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02]"
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                   style={primaryBtnStyle}>
                   CREATE ACCOUNT
                 </button>
