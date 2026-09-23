@@ -41,6 +41,7 @@ interface ScenarioSummary {
   versions: GameVersion[];
   createdAt: string;
   archived: boolean;
+  freeFixUsed: boolean;
 }
 
 interface PlayScenario {
@@ -105,9 +106,9 @@ const creatorUrl = (name: string) => `/dashboard?tab=buy&creator=${encodeURIComp
 
 // Credit costs surfaced in the UI (must match lib/pricing.ts)
 const MODIFY_COSTS: Record<string, { codeModify: number; regenerate: number }> = {
-  sandbox:   { codeModify: 1, regenerate: 2 },
-  tactical:  { codeModify: 1, regenerate: 2 },
-  narrative: { codeModify: 2, regenerate: 3 },
+  sandbox:   { codeModify: 3, regenerate: 3 },
+  tactical:  { codeModify: 3, regenerate: 3 },
+  narrative: { codeModify: 4, regenerate: 4 },
 };
 
 type ModalTab = "modify" | "publish";
@@ -266,6 +267,37 @@ function ModifyModal({
         setVersions(updated);
         setActiveVersionId(newVersion.id);
         onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
+      }
+    } catch {
+      setModifyError("Something went wrong. Please try again.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  // Free fix: self-reported "broken game" regenerate — 0 credits
+  const handleFreeFix = async () => {
+    setWorking(true);
+    setModifyError("");
+    try {
+      const res = await fetch(`/api/scenarios/${scenario.id}/freefix`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 402) { setModifyError(data.error ?? "Free fix not available"); return; }
+      if (!res.ok) { setModifyError(data.error ?? "Fix failed"); return; }
+      const newVersion = data.version as GameVersion | undefined;
+      if (newVersion) {
+        const updated = [...versions, newVersion];
+        setVersions(updated);
+        setActiveVersionId(newVersion.id);
+        onModified({
+          ...scenario,
+          title,
+          description: description.trim() || null,
+          activeVersionId: newVersion.id,
+          versions: updated,
+          isPublic: pubPublic,
+          freeFixUsed: true, // hide the button immediately after use
+        });
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -554,6 +586,22 @@ function ModifyModal({
                       ? "Sends the existing game code plus your instruction. Best for targeted changes like colors, rules tweaks, or adding a feature."
                       : "Discards the current code and regenerates from scratch using all prompts. Use when the game is broken or fundamentally wrong."}
                   </p>
+
+                  {/* Free fix — only shown if not yet used */}
+                  {!scenario.freeFixUsed && (
+                    <div className="mb-4 rounded-lg p-3" style={{ background: "#0a1020", border: "1px solid #1e2a4a" }}>
+                      <p className="text-gray-500 text-xs mb-2">
+                        Game not rendering correctly? Get one free regenerate on us.
+                      </p>
+                      <button
+                        onClick={handleFreeFix}
+                        disabled={working}
+                        className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
+                        style={{ background: "#16213022", border: "1px solid #22c55e66", color: "#22c55e", minHeight: "44px" }}>
+                        🔧 BROKEN? FIX IT — FREE
+                      </button>
+                    </div>
+                  )}
 
                   {/* Prompt textarea — disabled for regenerate */}
                   <textarea

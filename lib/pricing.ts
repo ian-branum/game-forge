@@ -19,9 +19,9 @@ export const CREDIT_COSTS = {
    * prompt chain (original + all modify prompts). Use when the game is broken.
    */
   regenerate: {
-    sandbox:   2,
-    tactical:  2,
-    narrative: 3,
+    sandbox:   3,   // matches forge
+    tactical:  3,   // matches forge
+    narrative: 4,   // matches forge
   },
 
   /**
@@ -29,9 +29,9 @@ export const CREDIT_COSTS = {
    * Cheaper than a full regenerate. Use for targeted tweaks.
    */
   codeModify: {
-    sandbox:   1,
-    tactical:  1,
-    narrative: 2,
+    sandbox:   3,   // matches forge
+    tactical:  3,   // matches forge
+    narrative: 4,   // matches forge
   },
 } as const;
 
@@ -52,6 +52,7 @@ export const FREEMIUM = {
   creditsOnSignup:          3,
   freePlayLimitDefault:     1,   // sessions before a license is required
   maxFreeTrialsPerScenario: 3,   // total across all users
+  freeFixesPerDay:          3,   // max free "broken game" fixes per user per 24h
 } as const;
 
 // ── Generation limits ─────────────────────────────────────────────────────────

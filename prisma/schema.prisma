@@ -90,6 +90,9 @@ model Scenario {
   isClonable         Boolean  @default(false) // creator allows others to fork this game
   clonesMayRepublish Boolean  @default(true)  // forks may be published publicly by their owner
 
+  // Free "broken? fix it" regenerate — one per scenario (per-user daily cap enforced via CreditTransaction)
+  freeFixUsed        Boolean  @default(false)
+
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   parent        Scenario?     @relation("ScenarioLineage", fields: [parentScenarioId], references: [id], onDelete: SetNull)
   remixes       Scenario[]    @relation("ScenarioLineage")

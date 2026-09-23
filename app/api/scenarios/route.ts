@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
       archived: true,
       freePlayLimit: true,
       adventureSubtype: true,
+      freeFixUsed: true,
       versions: {
         select: { id: true, versionNum: true, prompt: true, createdAt: true },
         orderBy: { versionNum: "asc" },
