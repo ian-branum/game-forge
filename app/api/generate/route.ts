@@ -65,25 +65,21 @@ const QA_SYSTEM_PROMPT = `You are a senior browser game QA engineer. You will be
 Check specifically for:
 1. BLANK RENDER: Canvas element present but getContext('2d') never called, or canvas dimensions are 0
 2. DEAD LOOP: Game loop (requestAnimationFrame or setInterval) never started, or only starts on an event that hasn't fired
-3. DEAD INPUT: Click/keydown/touchstart handlers not attached, or attached to the wrong element (e.g. document instead of canvas, or vice versa)
-4. INVISIBLE PIECES: Game state initialised but draw() never called on first load (pieces exist in memory but never painted)
-5. SILENT CRASH: Obvious JS errors that would throw on init (undefined variable, missing function call, wrong property name)
+3. DEAD INPUT: Click/keydown/touchstart handlers not attached, or attached to the wrong element
+4. INVISIBLE PIECES: Game state initialised but draw() never called on first load
+5. SILENT CRASH: Obvious JS errors that would throw on init (undefined variable, missing function call)
 6. MISSING INIT: Game setup function defined but never called
 
-Do NOT flag:
-- Style preferences or minor cosmetic issues
-- Performance concerns
-- Missing features
-- Anything that works but could be done better
+Do NOT flag style issues, performance concerns, missing features, or anything that works but could be better.
 
 Respond in this exact JSON format (no markdown, no preamble):
 {"pass": true}
 or
-{"pass": false, "issues": ["brief description of issue 1", "brief description of issue 2"]}`;
+{"pass": false, "issues": ["brief description of issue 1"]}`;
 
 async function runQACheck(html: string): Promise<{ pass: boolean; issues?: string[] }> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return { pass: true }; // fail open if no key
+  if (!apiKey) return { pass: true };
 
   try {
     const response = await fetch("https://api.deepseek.com/chat/completions", {
@@ -105,20 +101,41 @@ async function runQACheck(html: string): Promise<{ pass: boolean; issues?: strin
       }),
     });
 
-    if (!response.ok) return { pass: true }; // fail open on API error
-
+    if (!response.ok) return { pass: true };
     const data = await response.json();
     const content = data?.choices?.[0]?.message?.content;
     if (typeof content !== "string") return { pass: true };
-
     const result = JSON.parse(content);
-    return {
-      pass: result.pass === true,
-      issues: result.issues ?? [],
-    };
+    return { pass: result.pass === true, issues: result.issues ?? [] };
   } catch {
-    return { pass: true }; // fail open on any error
+    return { pass: true };
   }
+}
+
+// ─── SSE helper ─────────────────────────────────────────────────────────────
+// Lets the generation path push mid-request messages (e.g. "retrying…") to the
+// client without a full streaming rewrite of the response.
+function sseStream(handler: (send: (event: string, data: object) => void) => Promise<void>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: object) => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      };
+      try {
+        await handler(send);
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -151,54 +168,69 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Insufficient credits", needed: cost, have: user?.credits ?? 0 }, { status: 402 });
   }
 
-  let payload: unknown;
-  try {
-    payload = await plugin.generate(prompt);
-    plugin.validate(payload);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-    console.error("[/api/generate] Generation failed:", msg, stack);
-    return NextResponse.json({ error: msg, stack }, { status: 500 });
-  }
+  const userId = session.user.id;
 
-  const title = (payload as { title?: string }).title ?? "Untitled";
+  // ── Generation path (SSE) ────────────────────────────────────────────────
+  return sseStream(async (send) => {
+    try {
+      // First attempt
+      let payload = await plugin.generate(prompt);
+      plugin.validate(payload);
+      const title = (payload as { title?: string }).title ?? "Untitled";
+      const html = (payload as { html?: string }).html;
 
-  // Run description generation and the QA code review concurrently — QA costs
-  // no extra wall-clock time since description generation already takes a few
-  // seconds. Only sandbox games carry `payload.html`, so other types skip QA.
-  const html = (payload as { html?: string }).html;
+      let [description, qaResult] = await Promise.all([
+        generateDescription(prompt, title, gameType),
+        html ? runQACheck(html) : Promise.resolve<{ pass: boolean; issues?: string[] }>({ pass: true }),
+      ]);
 
-  const [description, qaResult] = await Promise.all([
-    generateDescription(prompt, title, gameType),
-    html ? runQACheck(html) : Promise.resolve<{ pass: boolean; issues?: string[] }>({ pass: true }),
-  ]);
+      // If QA fails, retry once — tell the user why they're waiting.
+      if (!qaResult.pass) {
+        console.warn("[/api/generate] QA failed, retrying:", qaResult.issues);
+        send("status", {
+          message: "My first attempt wasn't great. Let me try again — hang in there! 🛠️",
+        });
 
-  if (!qaResult.pass) {
-    console.error("[/api/generate] QA failed:", qaResult.issues);
-    return NextResponse.json(
-      {
-        error: "Game generation failed QA check — the game may not render correctly.",
-        issues: qaResult.issues,
-      },
-      { status: 500 }
-    );
-  }
+        payload = await plugin.generate(prompt);
+        plugin.validate(payload);
+        const title2 = (payload as { title?: string }).title ?? "Untitled";
+        const html2 = (payload as { html?: string }).html;
 
-  const [scenario] = await prisma.$transaction([
-    prisma.scenario.create({
-      data: {
-        userId: session.user.id,
-        category: gameType,
-        title,
-        description,
-        prompt,
-        payload: payload as object,
-      },
-    }),
-    prisma.user.update({ where: { id: session.user.id }, data: { credits: { decrement: cost } } }),
-    prisma.creditTransaction.create({ data: { userId: session.user.id, amount: -cost, reason: "generation" } }),
-  ]);
+        [description, qaResult] = await Promise.all([
+          generateDescription(prompt, title2, gameType),
+          html2 ? runQACheck(html2) : Promise.resolve<{ pass: boolean; issues?: string[] }>({ pass: true }),
+        ]);
 
-  return NextResponse.json({ id: scenario.id });
+        // If the second attempt also fails, proceed anyway (fail open — better a
+        // potentially imperfect game than a dead end for the user).
+        if (!qaResult.pass) {
+          console.warn("[/api/generate] QA failed on retry too, proceeding anyway:", qaResult.issues);
+        }
+      }
+
+      const finalTitle = (payload as { title?: string }).title ?? "Untitled";
+
+      const [scenario] = await prisma.$transaction([
+        prisma.scenario.create({
+          data: {
+            userId,
+            category: gameType,
+            title: finalTitle,
+            description,
+            prompt,
+            payload: payload as object,
+          },
+        }),
+        prisma.user.update({ where: { id: userId }, data: { credits: { decrement: cost } } }),
+        prisma.creditTransaction.create({ data: { userId, amount: -cost, reason: "generation" } }),
+      ]);
+
+      send("done", { id: scenario.id });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      console.error("[/api/generate] Generation failed:", msg, stack);
+      send("done", { error: msg, stack });
+    }
+  });
 }

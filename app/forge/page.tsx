@@ -36,6 +36,7 @@ export default function ForgePage() {
   const [category, setCategory] = useState<CategoryId>("sandbox");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const selectedCategory = CATEGORIES.find(c => c.id === category)!;
 
@@ -43,15 +44,19 @@ export default function ForgePage() {
     if (!prompt.trim()) return;
     if (!session) { signIn(); return; }
     setLoading(true);
+    setStatusMessage(null);
     setError(null);
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, category }),
       });
-      const data = await res.json();
+
+      // Handle non-SSE early errors (auth, validation, insufficient credits, etc.)
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         setError({
           message: `HTTP ${res.status}: ${data.error ?? "Unknown error"}`,
           detail: data.stack ?? JSON.stringify(data, null, 2),
@@ -59,7 +64,45 @@ export default function ForgePage() {
         setLoading(false);
         return;
       }
-      router.push(`/play/${data.id}`);
+
+      if (!res.body) {
+        setError({ message: "Network error: empty response body" });
+        setLoading(false);
+        return;
+      }
+
+      // Read the SSE stream — `status` events show progress, `done` is terminal.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+
+        for (const block of events) {
+          const eventLine = block.match(/^event: (.+)$/m)?.[1];
+          const dataLine = block.match(/^data: (.+)$/m)?.[1];
+          if (!eventLine || !dataLine) continue;
+
+          const payload = JSON.parse(dataLine);
+
+          if (eventLine === "status") {
+            setStatusMessage(payload.message);
+          } else if (eventLine === "done") {
+            if (payload.id) {
+              router.push(`/play/${payload.id}`);
+            } else {
+              setError({ message: payload.error ?? "Unknown error", detail: payload.stack });
+              setLoading(false);
+            }
+          }
+        }
+      }
     } catch (e) {
       setError({ message: `Network error: ${e instanceof Error ? e.message : String(e)}` });
       setLoading(false);
@@ -140,6 +183,11 @@ export default function ForgePage() {
             style={{ background: "linear-gradient(135deg, #4488ff22, #4488ff44)", border: "2px solid #4488ff66", color: "#4488ff" }}>
             {loading ? "FORGING..." : "FORGE GAME"}
           </button>
+          {loading && statusMessage && (
+            <p className="text-blue-400 text-sm text-center mt-3 font-orbitron animate-pulse">
+              {statusMessage}
+            </p>
+          )}
           <p className="text-gray-600 text-xs mt-3 text-center">
             {session
               ? `⚡ ${(session.user as { credits?: number }).credits ?? "?"} credits remaining · Tactical costs 3`
