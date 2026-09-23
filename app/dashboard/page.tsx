@@ -244,6 +244,7 @@ function ModifyModal({
         setVersions(updated);
         setActiveVersionId(newVersion.id);
         onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
+        window.dispatchEvent(new Event("gf:credits"));
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -267,6 +268,7 @@ function ModifyModal({
         setVersions(updated);
         setActiveVersionId(newVersion.id);
         onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
+        window.dispatchEvent(new Event("gf:credits"));
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -298,6 +300,7 @@ function ModifyModal({
           isPublic: pubPublic,
           freeFixUsed: true, // hide the button immediately after use
         });
+        window.dispatchEvent(new Event("gf:credits"));
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");

@@ -23,10 +23,17 @@ export default function Nav() {
       setCredits(null);
       return;
     }
-    fetch("/api/me/credits")
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => { if (data?.credits !== undefined) setCredits(data.credits); })
-      .catch(() => {});
+    const load = () => {
+      fetch("/api/me/credits")
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => { if (data?.credits !== undefined) setCredits(data.credits); })
+        .catch(() => {});
+    };
+    load();
+    // Credit-spending actions inside a modal don't change the pathname, so they
+    // fire this event to force an immediate refresh instead.
+    window.addEventListener("gf:credits", load);
+    return () => window.removeEventListener("gf:credits", load);
   }, [pathname, session?.user]);
 
   const displayCredits = credits !== null ? credits : "?";
