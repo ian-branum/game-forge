@@ -578,7 +578,6 @@ function ModifyModal({
                           ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
                           : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
                         {m.label}
-                        <span className="block text-[9px] mt-0.5 opacity-70">{m.cost} credit{m.cost !== 1 ? "s" : ""}</span>
                       </button>
                     ))}
                   </div>
@@ -633,8 +632,8 @@ function ModifyModal({
                       {working
                         ? "FORGING…"
                         : modifyMode === "codeModify"
-                          ? `CODE MODIFY — ${costs.codeModify} CR`
-                          : `REGENERATE — ${costs.regenerate} CR`}
+                          ? `CODE MODIFY`
+                          : `REGENERATE`}
                     </button>
                   </div>
                 </div>
