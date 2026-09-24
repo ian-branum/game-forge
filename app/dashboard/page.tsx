@@ -589,22 +589,6 @@ function ModifyModal({
                       : "Discards the current code and regenerates from scratch using all prompts. Use when the game is broken or fundamentally wrong."}
                   </p>
 
-                  {/* Free fix — only shown if not yet used */}
-                  {!scenario.freeFixUsed && (
-                    <div className="mb-4 rounded-lg p-3" style={{ background: "#0a1020", border: "1px solid #1e2a4a" }}>
-                      <p className="text-gray-500 text-xs mb-2">
-                        Game not rendering correctly? Get one free regenerate on us.
-                      </p>
-                      <button
-                        onClick={handleFreeFix}
-                        disabled={working}
-                        className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
-                        style={{ background: "#16213022", border: "1px solid #22c55e66", color: "#22c55e", minHeight: "44px" }}>
-                        🔧 BROKEN? FIX IT — FREE
-                      </button>
-                    </div>
-                  )}
-
                   {/* Prompt textarea — disabled for regenerate */}
                   <textarea
                     rows={3}
@@ -624,6 +608,16 @@ function ModifyModal({
 
                   <div className="flex items-center justify-end gap-3">
                     {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
+                    {/* Free fix — shown on regenerate tab only, if not yet used */}
+                    {modifyMode === "regenerate" && !scenario.freeFixUsed && (
+                      <button
+                        onClick={handleFreeFix}
+                        disabled={working}
+                        className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
+                        style={{ background: "#16213022", border: "1px solid #22c55e66", color: "#22c55e", minHeight: "44px" }}>
+                        🔧 FIX IT — FREE
+                      </button>
+                    )}
                     <button
                       onClick={modifyMode === "codeModify" ? handleCodeModify : handleRegenerate}
                       disabled={working || (modifyMode === "codeModify" && !modifyPrompt.trim())}
