@@ -118,7 +118,7 @@ export default function LandingPage() {
         id="how-it-works"
         className="flex justify-center py-12 px-6 border-b"
         style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl w-full text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-4xl w-full text-center">
           {[
             { n: "01", icon: "🖊️", title: "Describe It", body: "Type any game or scenario in plain English. Chess on a 10×10 board, a Pacific island assault, your own invented rules." },
             { n: "02", icon: "⚡", title: "AI Forges It", body: "Our AI generates a complete, playable game in seconds — board, rules, AI opponent, everything." },
