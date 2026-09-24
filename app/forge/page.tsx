@@ -190,7 +190,7 @@ export default function ForgePage() {
           )}
           <p className="text-gray-600 text-xs mt-3 text-center">
             {session
-              ? `⚡ ${(session.user as { credits?: number }).credits ?? "?"} credits remaining · Tactical costs 3`
+              ? `⚡ ${(session.user as { credits?: number }).credits ?? "?"} credits remaining`
               : "Sign in to forge games"}
           </p>
         </div>

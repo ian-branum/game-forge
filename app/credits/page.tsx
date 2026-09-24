@@ -11,7 +11,7 @@ export default function CreditsPage() {
         BUY CREDITS
       </h1>
       <p className="text-gray-400 text-sm mb-12">
-        Each credit pack lets you forge more games. Tactical scenarios cost 3 credits each.
+        Each credit pack lets you forge more games.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-2xl">

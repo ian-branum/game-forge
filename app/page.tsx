@@ -237,7 +237,7 @@ export default function LandingPage() {
           READY TO FORGE?
         </h2>
         <p className="text-gray-400 text-sm mb-8 max-w-md">
-          Sign up free and get 3 credits to start. No credit card required.
+          Sign up free and start forging. No credit card required.
         </p>
         <button
           onClick={() => router.push("/login")}
