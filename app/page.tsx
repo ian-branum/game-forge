@@ -123,6 +123,7 @@ export default function LandingPage() {
             { n: "01", icon: "🖊️", title: "Describe It", body: "Type any game or scenario in plain English. Chess on a 10×10 board, a Pacific island assault, your own invented rules." },
             { n: "02", icon: "⚡", title: "AI Forges It", body: "Our AI generates a complete, playable game in seconds — board, rules, AI opponent, everything." },
             { n: "03", icon: "🎮", title: "Play & Modify", body: "Jump straight in. Tweak anything with a follow-up prompt — new pieces, different rules, bigger board." },
+            { n: "04", icon: "💰", title: "Sell It", body: "Publish your game to the marketplace. Set your price, let others play or clone it, and earn credits every time." },
           ].map(step => (
             <div key={step.n} className="flex flex-col items-center">
               <div className="font-orbitron text-xs text-gray-500 mb-2 tracking-widest">{step.n}</div>
