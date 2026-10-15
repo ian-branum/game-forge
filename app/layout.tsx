@@ -12,7 +12,7 @@ const orbitron = Orbitron({
 
 export const metadata: Metadata = {
   title: "Game Forge",
-  description: "Describe a battle. Play it.",
+  description: "Generate, play, and discover AI-powered games. Describe any game concept and play it instantly — or explore the marketplace.",
 };
 
 export default function RootLayout({
