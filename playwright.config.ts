@@ -1,0 +1,82 @@
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Game-Forge Playwright config.
+ *
+ * Target: Preview / production URL (game-forge.ai).
+ * Auth state: stored in playwright/.auth/user.json — generated once by
+ * the "setup" project and reused by all test projects.
+ *
+ * Local usage:
+ *   npx playwright test               # all tests (Chromium)
+ *   npx playwright test --project=chromium
+ *   npx playwright test smoke/        # smoke suite only
+ *   BASE_URL=http://localhost:3000 npx playwright test  # against local dev
+ *
+ * CI usage (set env vars):
+ *   BASE_URL, E2E_EMAIL, E2E_PASSWORD
+ */
+
+const BASE_URL = process.env.BASE_URL ?? "https://preview.game-forge.ai";
+
+export default defineConfig({
+  testDir: "./tests",
+  outputDir: "./playwright-report/results",
+
+  /* Retry flaky tests once in CI */
+  retries: process.env.CI ? 1 : 0,
+
+  /* Run tests in parallel (file-level) */
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : undefined,
+
+  /* Reporters */
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "playwright-report/html", open: "never" }],
+  ],
+
+  /* Shared settings for every test */
+  use: {
+    baseURL: BASE_URL,
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
+    headless: true,
+  },
+
+  projects: [
+    /* ── Global setup: log in once and save storage state ── */
+    {
+      name: "setup",
+      testMatch: "**/auth.setup.ts",
+    },
+
+    /* ── Chromium (primary) — authenticated ── */
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    /* ── Firefox ── (disabled by default; uncomment to enable) */
+    // {
+    //   name: "firefox",
+    //   use: {
+    //     ...devices["Desktop Firefox"],
+    //     storageState: "playwright/.auth/user.json",
+    //   },
+    //   dependencies: ["setup"],
+    // },
+
+    /* ── Mobile Chrome — unauthenticated (landing + login only) ── */
+    {
+      name: "mobile-chrome",
+      testMatch: "**/smoke/landing.spec.ts",
+      use: { ...devices["Pixel 5"] },
+    },
+  ],
+});
