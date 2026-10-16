@@ -1,0 +1,41 @@
+/**
+ * Smoke — Landing Page
+ * Verifies the public landing page renders correctly for unauthenticated users.
+ * Runs in both Chromium and Mobile Chrome projects.
+ */
+
+import { test, expect } from "../../tests/fixtures";
+
+test.describe("Landing page", () => {
+  test.beforeEach(async ({ landing }) => {
+    await landing.goto();
+  });
+
+  test("renders hero heading and CTA", async ({ page }) => {
+    await expect(page.locator("h1")).toContainText("GAME");
+    await expect(page.locator("h1")).toContainText("FORGE");
+    await expect(page.getByRole("button", { name: /get started/i }).first()).toBeVisible();
+  });
+
+  test("shows 3 engine cards", async ({ page }) => {
+    // Each engine card has a label span visible in the section
+    await expect(page.getByText("Games & Puzzles")).toBeVisible();
+    await expect(page.getByText("WW2 Tactical")).toBeVisible();
+    await expect(page.getByText("Adventure")).toBeVisible();
+  });
+
+  test("shows 'How It Works' section with 4 steps", async ({ page }) => {
+    // Steps are identified by their zero-padded ordinal
+    for (const n of ["01", "02", "03", "04"]) {
+      await expect(page.getByText(n)).toBeVisible();
+    }
+  });
+
+  test("Get Started CTA navigates to /login", async ({ landing }) => {
+    await landing.clickGetStarted();
+  });
+
+  test("page title is present", async ({ page }) => {
+    await expect(page).toHaveTitle(/.+/); // any non-empty title
+  });
+});
