@@ -1,4 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "fs";
+
+// Load .env.local if present (Next.js convention — not auto-loaded by Playwright)
+if (existsSync(".env.local")) {
+  process.loadEnvFile(".env.local");
+}
 
 /**
  * Game-Forge Playwright config.

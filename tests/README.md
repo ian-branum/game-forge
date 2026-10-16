@@ -41,13 +41,14 @@ Preview deployments are protected by Vercel SSO. Generate a bypass secret:
 
 1. Vercel Dashboard → Project → **Settings → Deployment Protection**
 2. Under **Protection Bypass for Automation** → click **Generate**
-3. Copy the secret and export it:
+3. Add it to your `.env.local` (already gitignored):
 
-```bash
-export VERCEL_AUTOMATION_BYPASS_SECRET="<your-secret>"
+```
+VERCEL_AUTOMATION_BYPASS_SECRET=your-secret-here
 ```
 
-The `x-vercel-protection-bypass` header is sent automatically by Playwright.
+Playwright loads `.env.local` automatically at startup — no manual `export` needed.
+The `x-vercel-protection-bypass` header is sent with every request.
 This header is silently ignored by Prod — safe to always include in CI.
 
 ### 3. Install Playwright browsers (if not already done)
