@@ -43,6 +43,14 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     headless: true,
+    // Bypass Vercel Deployment Protection on Preview.
+    // Set VERCEL_AUTOMATION_BYPASS_SECRET in your env (never commit this value).
+    // Generate it in: Vercel Dashboard → Project → Settings → Deployment Protection
+    //                 → Protection Bypass for Automation
+    // This header is ignored by Prod — safe to always include.
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+      : {},
   },
 
   projects: [
