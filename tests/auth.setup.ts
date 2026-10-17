@@ -33,7 +33,8 @@ setup("authenticate", async ({ page }) => {
   // Fill email + password and submit
   await page.getByPlaceholder(/you@example\.com/i).fill(email);
   await page.getByPlaceholder("••••••••").first().fill(password);
-  await page.getByRole("button", { name: /^sign in$/i }).click();
+  // Scope to the form to avoid matching the Nav's "Sign In" button
+  await page.locator("form").getByRole("button", { name: /^sign in$/i }).click();
 
   // Wait for redirect to dashboard
   await page.waitForURL("**/dashboard", { timeout: 15_000 });

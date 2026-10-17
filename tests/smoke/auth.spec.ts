@@ -35,13 +35,15 @@ test.describe("Auth — login page", () => {
     await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
     await expect(page.getByPlaceholder(/you@example\.com/i)).toBeVisible();
     await expect(page.getByPlaceholder("••••••••").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
+    // Scope to form to avoid matching the Nav's "Sign In" button
+    await expect(page.locator("form").getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
   test("shows error on bad credentials", async ({ page }) => {
     await page.getByPlaceholder(/you@example\.com/i).fill("invalid@example.com");
     await page.getByPlaceholder("••••••••").first().fill("wrongpassword123");
-    await page.getByRole("button", { name: /^sign in$/i }).click();
+    // Scope to form to avoid matching the Nav's "Sign In" button
+    await page.locator("form").getByRole("button", { name: /^sign in$/i }).click();
     // Expect an inline error — not a redirect
     await expect(page.locator("p.text-red-400")).toBeVisible({ timeout: 8_000 });
   });

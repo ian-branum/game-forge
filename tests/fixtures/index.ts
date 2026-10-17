@@ -51,7 +51,8 @@ export class LoginPage {
   }
 
   get signInButton() {
-    return this.page.getByRole("button", { name: /^sign in$/i });
+    // Scoped to form — avoids matching the Nav's "Sign In" button
+    return this.page.locator("form").getByRole("button", { name: /^sign in$/i });
   }
 
   get errorMessage() {
