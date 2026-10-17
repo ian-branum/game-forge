@@ -6,6 +6,9 @@
  * Credentials come from env vars (never hard-coded):
  *   E2E_EMAIL     — test account email
  *   E2E_PASSWORD  — test account password
+ *
+ * NOTE: The login form labels have no htmlFor/id association, so we use
+ * getByPlaceholder() for inputs instead of getByLabel().
  */
 
 import { test as setup, expect } from "@playwright/test";
@@ -28,9 +31,9 @@ setup("authenticate", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
 
   // Fill email + password and submit
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/^password$/i).fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.getByPlaceholder(/you@example\.com/i).fill(email);
+  await page.getByPlaceholder("••••••••").first().fill(password);
+  await page.getByRole("button", { name: /^sign in$/i }).click();
 
   // Wait for redirect to dashboard
   await page.waitForURL("**/dashboard", { timeout: 15_000 });

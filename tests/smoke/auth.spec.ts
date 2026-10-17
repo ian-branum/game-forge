@@ -2,6 +2,9 @@
  * Smoke — Auth flows
  * Covers: unauthenticated redirect, login form validation, bad-credentials error.
  * These tests do NOT use saved storage state — they run as anonymous users.
+ *
+ * NOTE: The login form labels have no htmlFor/id association, so we use
+ * getByPlaceholder() for inputs instead of getByLabel().
  */
 
 import { test, expect } from "@playwright/test";
@@ -30,14 +33,14 @@ test.describe("Auth — login page", () => {
 
   test("renders sign-in form", async ({ page }) => {
     await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/you@example\.com/i)).toBeVisible();
+    await expect(page.getByPlaceholder("••••••••").first()).toBeVisible();
     await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
   test("shows error on bad credentials", async ({ page }) => {
-    await page.getByLabel(/email/i).fill("invalid@example.com");
-    await page.getByLabel(/^password$/i).fill("wrongpassword123");
+    await page.getByPlaceholder(/you@example\.com/i).fill("invalid@example.com");
+    await page.getByPlaceholder("••••••••").first().fill("wrongpassword123");
     await page.getByRole("button", { name: /^sign in$/i }).click();
     // Expect an inline error — not a redirect
     await expect(page.locator("p.text-red-400")).toBeVisible({ timeout: 8_000 });
@@ -46,26 +49,26 @@ test.describe("Auth — login page", () => {
   test("can switch to create account mode", async ({ page }) => {
     await page.getByRole("button", { name: /create account/i }).click();
     await expect(page.getByRole("heading", { name: /create account/i })).toBeVisible();
-    await expect(page.getByLabel(/display name/i)).toBeVisible();
-    await expect(page.getByLabel(/confirm password/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/commander shepard/i)).toBeVisible();
+    await expect(page.getByPlaceholder("••••••••").nth(1)).toBeVisible(); // confirm password
   });
 
   test("signup shows error for short password", async ({ page }) => {
     await page.getByRole("button", { name: /create account/i }).click();
-    await page.getByLabel(/display name/i).fill("Tester");
-    await page.getByLabel(/email/i).fill("tester@example.com");
-    await page.getByLabel(/^password$/i).fill("short");
-    await page.getByLabel(/confirm password/i).fill("short");
+    await page.getByPlaceholder(/commander shepard/i).fill("Tester");
+    await page.getByPlaceholder(/you@example\.com/i).fill("tester@example.com");
+    await page.getByPlaceholder("••••••••").first().fill("short");
+    await page.getByPlaceholder("••••••••").nth(1).fill("short");
     await page.getByRole("button", { name: /create account/i }).last().click();
     await expect(page.locator("p.text-red-400")).toContainText(/8 characters/i);
   });
 
   test("signup shows error for mismatched passwords", async ({ page }) => {
     await page.getByRole("button", { name: /create account/i }).click();
-    await page.getByLabel(/display name/i).fill("Tester");
-    await page.getByLabel(/email/i).fill("tester@example.com");
-    await page.getByLabel(/^password$/i).fill("password123");
-    await page.getByLabel(/confirm password/i).fill("password456");
+    await page.getByPlaceholder(/commander shepard/i).fill("Tester");
+    await page.getByPlaceholder(/you@example\.com/i).fill("tester@example.com");
+    await page.getByPlaceholder("••••••••").first().fill("password123");
+    await page.getByPlaceholder("••••••••").nth(1).fill("password456");
     await page.getByRole("button", { name: /create account/i }).last().click();
     await expect(page.locator("p.text-red-400")).toContainText(/do not match/i);
   });

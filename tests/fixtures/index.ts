@@ -42,11 +42,12 @@ export class LoginPage {
   }
 
   get emailInput() {
-    return this.page.getByLabel(/email/i);
+    return this.page.getByPlaceholder(/you@example\.com/i);
   }
 
   get passwordInput() {
-    return this.page.getByLabel(/^password$/i);
+    // First ••••••••  placeholder = password field (confirm is nth(1) in signup mode)
+    return this.page.getByPlaceholder("••••••••").first();
   }
 
   get signInButton() {
