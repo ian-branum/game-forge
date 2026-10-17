@@ -5,6 +5,10 @@
 
 import { test, expect } from "@playwright/test";
 
+// Force anonymous session for all tests in this file,
+// overriding any project-level storageState (e.g. playwright/.auth/user.json).
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("Nav bar", () => {
   test("landing page has a nav bar", async ({ page }) => {
     await page.goto("/");

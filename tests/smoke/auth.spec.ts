@@ -9,6 +9,10 @@
 
 import { test, expect } from "@playwright/test";
 
+// Force anonymous session for all tests in this file,
+// overriding any project-level storageState (e.g. playwright/.auth/user.json).
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("Auth — unauthenticated access", () => {
   test("dashboard redirects anon user to landing (client-side)", async ({ page }) => {
     await page.goto("/dashboard");

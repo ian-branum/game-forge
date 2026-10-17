@@ -6,6 +6,9 @@
 
 import { test, expect } from "@playwright/test";
 
+// All tests in this file are unauthenticated API checks.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("GET /api/demos", () => {
   test("returns tactical and sandbox arrays", async ({ request }) => {
     const res = await request.get("/api/demos");
