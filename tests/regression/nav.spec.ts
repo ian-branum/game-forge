@@ -20,8 +20,9 @@ test.describe("Nav bar", () => {
 
   test("landing CTA buttons both navigate to /login", async ({ page }) => {
     await page.goto("/");
-    // Both CTA buttons (hero + bottom) lead to /login
-    const btns = page.getByRole("button", { name: /get started/i });
+    // Both CTA buttons (hero + bottom) have label "Get Started · Free"
+    // The Nav also has a "Sign In" button — we target the page body buttons by text
+    const btns = page.getByRole("button", { name: /get started · free/i });
     await expect(btns).toHaveCount(2);
     await btns.first().click();
     await page.waitForURL("**/login");

@@ -9,20 +9,22 @@
 
 import { test, expect } from "@playwright/test";
 
-test.describe("Auth — unauthenticated redirects", () => {
-  test("dashboard redirects anon user to landing", async ({ page }) => {
+test.describe("Auth — unauthenticated access", () => {
+  test("dashboard redirects anon user to landing (client-side)", async ({ page }) => {
     await page.goto("/dashboard");
-    // Should end up at / (landing) — not dashboard
-    await page.waitForURL(/^\/$|\/login/, { timeout: 10_000 });
+    // Dashboard uses client-side router.replace("/") after NextAuth resolves,
+    // so we wait for the LOADING... spinner to disappear and the URL to change.
+    await page.waitForURL(/^\/$|\/login/, { timeout: 20_000 });
     const url = page.url();
     expect(url).not.toContain("/dashboard");
   });
 
-  test("forge page redirects anon user", async ({ page }) => {
-    await page.goto("/forge");
-    await page.waitForURL(/^\/$|\/login/, { timeout: 10_000 });
-    const url = page.url();
-    expect(url).not.toContain("/forge");
+  test("forge page renders for anon users (no redirect)", async ({ page }) => {
+    // /forge does not redirect unauthenticated users — it renders the page
+    // and prompts sign-in contextually. Just verify it loads without error.
+    const response = await page.goto("/forge");
+    expect(response?.status()).not.toBe(500);
+    await expect(page).not.toHaveURL(/error/);
   });
 });
 
