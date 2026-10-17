@@ -12,11 +12,11 @@ import { test, expect } from "@playwright/test";
 test.describe("Auth — unauthenticated access", () => {
   test("dashboard redirects anon user to landing (client-side)", async ({ page }) => {
     await page.goto("/dashboard");
-    // Dashboard uses client-side router.replace("/") after NextAuth resolves,
-    // so we wait for the LOADING... spinner to disappear and the URL to change.
-    await page.waitForURL(/^\/$|\/login/, { timeout: 20_000 });
-    const url = page.url();
-    expect(url).not.toContain("/dashboard");
+    // Dashboard uses client-side router.replace("/") once NextAuth resolves
+    // the session as unauthenticated. Wait for the LOADING... state to clear
+    // and the URL to settle on /  (not /login).
+    await page.waitForURL(/^\/$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/^https?:\/\/[^/]+\/?$/);
   });
 
   test("forge page renders for anon users (no redirect)", async ({ page }) => {
