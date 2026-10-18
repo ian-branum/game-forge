@@ -11,7 +11,7 @@ export const narrativePlugin: ServerPlugin<NarrativeScenario> = {
     description: "Branching text adventures",
     emoji: "📖",
     color: "#06b6d4",
-    creditCost: 4,
+    creditCost: 1,
     schemaVersion: "1.0",
     available: true,
     supportedProfiles: [

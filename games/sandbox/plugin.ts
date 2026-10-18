@@ -12,7 +12,7 @@ export const sandboxPlugin: ServerPlugin<SandboxScenario> = {
     description: "AI-generated game — any game, any variant",
     emoji: "🎮",
     color: "#4488ff",
-    creditCost: 3,
+    creditCost: 1,
     schemaVersion: "1.0",
     available: true,
     supportedProfiles: [

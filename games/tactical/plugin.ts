@@ -11,7 +11,7 @@ export const tacticalPlugin: ServerPlugin<ScenarioDefinition> = {
     description: "Hex-based squad combat",
     emoji: "⚔️",
     color: "#4488ff",
-    creditCost: 3,
+    creditCost: 1,
     schemaVersion: "1.0",
     available: true,
     supportedProfiles: [

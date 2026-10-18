@@ -9,29 +9,30 @@
 export const CREDIT_COSTS = {
   /** Forge: generate a brand-new scenario from a prompt */
   forge: {
-    sandbox:   3,
-    tactical:  3,
-    narrative: 4,
+    sandbox:   1,
+    tactical:  1,
+    narrative: 1,   // may increase when narrative becomes AI-intensive
   },
 
   /**
    * Regenerate: discard existing code, re-run the generator with the full
-   * prompt chain (original + all modify prompts). Use when the game is broken.
+   * prompt chain (original + all modify prompts). Same cost as forge.
+   * Note: free regenerate ("Broken? Fix it") is handled separately via freeFixUsed.
    */
   regenerate: {
-    sandbox:   3,   // matches forge
-    tactical:  3,   // matches forge
-    narrative: 4,   // matches forge
+    sandbox:   1,
+    tactical:  1,
+    narrative: 1,
   },
 
   /**
    * Code Modify: send the existing code + a new instruction to the generator.
-   * Cheaper than a full regenerate. Use for targeted tweaks.
+   * Same cost as forge — extra input tokens from current code are negligible on DeepSeek.
    */
   codeModify: {
-    sandbox:   3,   // matches forge
-    tactical:  3,   // matches forge
-    narrative: 4,   // matches forge
+    sandbox:   1,
+    tactical:  1,
+    narrative: 1,
   },
 } as const;
 
@@ -49,7 +50,7 @@ export function getCost(
 // ── Freemium / marketplace defaults ──────────────────────────────────────────
 
 export const FREEMIUM = {
-  creditsOnSignup:          3,
+  creditsOnSignup:          3,   // TODO: revisit — currently 3 but may increase
   freePlayLimitDefault:     1,   // sessions before a license is required
   maxFreeTrialsPerScenario: 3,   // total across all users
   freeFixesPerDay:          3,   // max free "broken game" fixes per user per 24h
