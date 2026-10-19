@@ -7,6 +7,9 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Auth — unauthenticated redirects", () => {
+  // Force anon context — override any project-level storageState
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   test("dashboard redirects anon user to landing", async ({ page }) => {
     await page.goto("/dashboard");
     // Should end up at / (landing) — not dashboard
@@ -24,6 +27,9 @@ test.describe("Auth — unauthenticated redirects", () => {
 });
 
 test.describe("Auth — login page", () => {
+  // Also anon — login page tests don't need a session
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
   });
