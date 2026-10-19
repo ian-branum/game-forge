@@ -10,6 +10,10 @@ test.describe("Auth — unauthenticated redirects", () => {
   // Force anon context — override any project-level storageState
   test.use({ storageState: { cookies: [], origins: [] } });
 
+  test.beforeEach(async ({ context }) => {
+    await context.clearCookies();
+  });
+
   test("dashboard redirects anon user to landing", async ({ page }) => {
     await page.goto("/dashboard");
     // Should end up at / (landing) — not dashboard

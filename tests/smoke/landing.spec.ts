@@ -13,8 +13,10 @@ test.describe("Landing page", () => {
   // Force unauthenticated context — clears any saved session cookies
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test.beforeEach(async ({ landing }) => {
+  test.beforeEach(async ({ landing, page, context }) => {
+    await context.clearCookies();
     await landing.goto();
+    await page.waitForLoadState("networkidle");
   });
 
   test("renders hero heading and CTA", async ({ page }) => {
