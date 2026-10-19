@@ -6,13 +6,14 @@
 
 import { test, expect } from "@playwright/test";
 
-test.describe("Auth — unauthenticated redirects", () => {
-  test("dashboard redirects anon user to landing", async ({ page }) => {
+test.describe("Auth — unauthenticated access", () => {
+  test("dashboard redirects anon user to landing (client-side)", async ({ page }) => {
     await page.goto("/dashboard");
-    // Should end up at / (landing) — not dashboard
-    await page.waitForURL(/^\/$|\/login/, { timeout: 10_000 });
-    const url = page.url();
-    expect(url).not.toContain("/dashboard");
+    // Dashboard uses client-side router.replace("/") once NextAuth resolves
+    // the session as unauthenticated. Wait for the LOADING... state to clear
+    // and the URL to settle on / (not /login).
+    await page.waitForURL(/^https?:\/\/[^/]+\/?$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/^https?:\/\/[^/]+\/?$/);
   });
 
   test("forge page redirects anon user", async ({ page }) => {

@@ -1,53 +1,67 @@
 /**
  * Smoke — Landing Page
- * Verifies the public landing page renders correctly for unauthenticated users.
- * Runs in both Chromium and Mobile Chrome projects.
- *
- * NOTE: storageState is explicitly cleared so these tests always run as anon,
- * even when the chromium project has a saved auth state.
+ * Covers the public landing page for anonymous users.
  */
 
-import { test, expect } from "../../tests/fixtures";
+import { test, expect } from "@playwright/test";
+
+test.use({
+  storageState: {
+    cookies: [],
+    origins: [],
+  },
+});
 
 test.describe("Landing page", () => {
-  test.beforeEach(async ({ landing, page }) => {
-    await landing.goto();
-    await page.waitForLoadState("networkidle");
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
   });
 
   test("renders hero heading and CTA", async ({ page }) => {
-    // h1 may render as separate words/spans — check for either combined or split
-    const h1 = page.locator("h1").first();
-    await expect(h1).toBeVisible();
-    const h1Text = await h1.innerText();
-    expect(h1Text.toUpperCase()).toMatch(/GAME|FORGE/);
-    await expect(page.getByRole("button", { name: /get started/i }).first()).toBeVisible();
+    await expect(page.locator("h1").first()).toContainText(/GAME/i);
+    await expect(page.locator("h1").first()).toContainText(/FORGE/i);
+
+    await expect(
+      page.getByRole("button", { name: /get started/i }).first()
+    ).toBeVisible();
   });
 
-  test("shows 3 engine cards", async ({ page }) => {
-    // Case-insensitive text match — engine names may render in any case
-    await expect(page.getByText(/games\s*&\s*puzzles/i).first()).toBeVisible();
-    await expect(page.getByText(/ww2\s*tactical/i).first()).toBeVisible();
-    await expect(page.getByText(/adventure/i).first()).toBeVisible();
-  });
+  test("shows all 3 engine cards", async ({ page }) => {
+    for (const name of [
+      "Games & Puzzles",
+      "WW2 Tactical",
+      "Adventure",
+    ]) {
+      const visibleText = page
+        .getByText(name, { exact: true })
+        .and(page.locator(":visible"));
 
-  test("shows 'How It Works' section with 4 steps", async ({ page }) => {
-    // Scroll the section into view first — it may be below the fold
-    const howItWorks = page.getByText(/how it works/i).first();
-    await howItWorks.scrollIntoViewIfNeeded();
-    // Steps identified by zero-padded ordinals — match anywhere in the section
-    for (const n of ["01", "02", "03", "04"]) {
-      await expect(
-        page.getByText(new RegExp(`\\b0?${parseInt(n, 10)}\\b`)).first()
-      ).toBeVisible();
+      await expect(visibleText.first()).toBeVisible();
     }
   });
 
-  test("Get Started CTA navigates to /login", async ({ landing }) => {
-    await landing.clickGetStarted();
+  test("shows How It Works with all 4 steps", async ({ page }) => {
+    for (const number of ["01", "02", "03", "04"]) {
+      const visibleNumber = page
+        .getByText(number, { exact: true })
+        .and(page.locator(":visible"));
+
+      await expect(visibleNumber.first()).toBeVisible();
+    }
   });
 
-  test("page title is present", async ({ page }) => {
-    await expect(page).toHaveTitle(/.+/); // any non-empty title
+  test("Get Started navigates to login", async ({ page }) => {
+    const getStarted = page
+      .getByRole("button", { name: /get started/i })
+      .first();
+
+    await expect(getStarted).toBeVisible();
+    await getStarted.click();
+
+    await expect(page).toHaveURL(/\/login(?:[/?#]|$)/);
+  });
+
+  test("has a page title", async ({ page }) => {
+    await expect(page).toHaveTitle(/.+/);
   });
 });
