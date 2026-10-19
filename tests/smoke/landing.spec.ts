@@ -10,11 +10,7 @@
 import { test, expect } from "../../tests/fixtures";
 
 test.describe("Landing page", () => {
-  // Force unauthenticated context — clears any saved session cookies
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test.beforeEach(async ({ landing, page, context }) => {
-    await context.clearCookies();
+  test.beforeEach(async ({ landing, page }) => {
     await landing.goto();
     await page.waitForLoadState("networkidle");
   });
