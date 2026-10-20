@@ -243,7 +243,12 @@ function ModifyModal({
         const updated = [...versions, newVersion];
         setVersions(updated);
         setActiveVersionId(newVersion.id);
-        onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
+        // Use server-returned title/description if the AI renamed the game
+        const updatedTitle = (data.title as string | undefined) ?? title;
+        const updatedDesc = (data.description as string | undefined) ?? description.trim() || null;
+        setTitle(updatedTitle);
+        setDescription(updatedDesc ?? "");
+        onModified({ ...scenario, title: updatedTitle, description: updatedDesc, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
         window.dispatchEvent(new Event("gf:credits"));
       }
     } catch {

@@ -78,9 +78,15 @@ export async function POST(
       select: { id: true, versionNum: true, prompt: true, createdAt: true },
     });
 
+    const p = payload as Record<string, unknown>;
     await tx.scenario.update({
       where: { id },
-      data: { payload: payload as object, activeVersionId: created.id },
+      data: {
+        payload: payload as object,
+        activeVersionId: created.id,
+        ...(typeof p.title === "string" && p.title.trim() ? { title: p.title.trim() } : {}),
+        ...(typeof p.description === "string" && p.description.trim() ? { description: p.description.trim() } : {}),
+      },
     });
 
     await tx.user.update({

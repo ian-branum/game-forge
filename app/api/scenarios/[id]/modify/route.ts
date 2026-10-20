@@ -89,10 +89,18 @@ export async function POST(
       select: { id: true, versionNum: true, prompt: true, createdAt: true },
     });
 
-    // New version becomes active; keep scenario.payload in sync (play page reads it)
+    // New version becomes active; keep scenario.payload in sync (play page reads it).
+    // Also surface title/description changes from the updated payload so the dashboard
+    // cards reflect any rename the user asked for.
+    const p = payload as Record<string, unknown>;
     await tx.scenario.update({
       where: { id },
-      data: { payload: payload as object, activeVersionId: created.id },
+      data: {
+        payload: payload as object,
+        activeVersionId: created.id,
+        ...(typeof p.title === "string" && p.title.trim() ? { title: p.title.trim() } : {}),
+        ...(typeof p.description === "string" && p.description.trim() ? { description: p.description.trim() } : {}),
+      },
     });
 
     await tx.user.update({
@@ -111,5 +119,11 @@ export async function POST(
     return created;
   });
 
-  return NextResponse.json({ ok: true, version });
+  // Re-fetch the updated scenario title/description so the client can sync immediately.
+  const updated = await prisma.scenario.findUnique({
+    where: { id },
+    select: { title: true, description: true },
+  });
+
+  return NextResponse.json({ ok: true, version, title: updated?.title, description: updated?.description });
 }
