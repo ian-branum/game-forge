@@ -51,10 +51,22 @@ export async function GET(req: NextRequest) {
 
     const lineageCache = new Map<string, LineageNode>();
 
-    // The union naturally yields two cards for a cloned game: the original I hold a
-    // license for, plus my own fork (which carries the lineage chain back to it).
+    // Fetch originalScenarioId for all "mine" rows so we can deduplicate.
+    const mineWithOrigin = mine.length
+      ? await prisma.scenario.findMany({
+          where: { id: { in: mine.map(s => s.id) } },
+          select: { id: true, originalScenarioId: true },
+        })
+      : [];
+    const myOriginalIds = new Set(
+      mineWithOrigin.map(s => s.originalScenarioId).filter(Boolean) as string[]
+    );
+
+    // If I own a fork of a game I also hold a license for, show only the fork.
+    const deduplicatedLicensed = licensed.filter(s => !myOriginalIds.has(s.id));
+
     const scenarios = await Promise.all(
-      [...mine, ...licensed].map(async ({ user, ...rest }) => ({
+      [...mine, ...deduplicatedLicensed].map(async ({ user, ...rest }) => ({
         ...rest,
         creator: user?.displayName ?? user?.name ?? "Unknown",
         lineage: rest.parentScenarioId ? await buildLineage(rest.id, lineageCache) : [],

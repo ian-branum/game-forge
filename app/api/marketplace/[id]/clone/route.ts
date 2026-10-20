@@ -53,7 +53,7 @@ export async function POST(
       data: {
         userId,
         category: source.category,
-        title: `${source.title} (cloned)`,
+        title: `${source.title.replace(/(\s*\(cloned\))+$/i, "")} (cloned)`,
         prompt: source.prompt,
         payload,
         description: source.description,

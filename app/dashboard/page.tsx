@@ -1046,6 +1046,10 @@ function DashboardInner() {
 
   const handleModified = (updated: ScenarioSummary) => {
     setScenarios(prev => prev.map(s => s.id === updated.id ? updated : s));
+    // Keep the Play tab in sync — update title/description there too
+    setPlayScenarios(prev => prev.map(s =>
+      s.id === updated.id ? { ...s, title: updated.title, description: updated.description } : s
+    ));
     setModalScenario(updated);
   };
 
