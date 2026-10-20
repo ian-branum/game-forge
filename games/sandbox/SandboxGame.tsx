@@ -6,7 +6,7 @@ export default function SandboxGame({ scenario }: { scenario: SandboxScenario })
     <div style={{ width: "100%", height: "100vh", background: "#05071a" }}>
       <iframe
         srcDoc={scenario.html}
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-same-origin"
         style={{
           width: "100%",
           height: "100%",
