@@ -1191,6 +1191,18 @@ function DashboardInner() {
           </div>
 
           <div className="flex-1" />
+
+          <Link
+            href="/forge"
+            className="font-orbitron font-black text-xs tracking-widest px-5 py-2 rounded-xl transition-all hover:scale-105 flex-shrink-0"
+            style={{
+              background: "linear-gradient(135deg, #4488ff22, #4488ff44)",
+              border: "2px solid #4488ff66",
+              color: "#4488ff",
+              boxShadow: "0 0 16px #4488ff22",
+            }}>
+            ⚡ FORGE
+          </Link>
         </div>
       )}
 
