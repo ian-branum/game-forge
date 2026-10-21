@@ -1191,6 +1191,13 @@ function DashboardInner() {
           </div>
 
           <div className="flex-1" />
+
+          <Link
+            href="/forge"
+            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-full transition hover:opacity-80 flex-shrink-0"
+            style={{ background: "#4488ff11", border: "1px solid #4488ff55", color: "#4488ff" }}>
+            + NEW GAME
+          </Link>
         </div>
       )}
 
@@ -1328,14 +1335,6 @@ function DashboardInner() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="flex justify-end mb-3">
-                <Link
-                  href="/forge"
-                  className="font-orbitron text-xs tracking-widest transition hover:opacity-80"
-                  style={{ color: "#4488ff" }}>
-                  + NEW GAME
-                </Link>
-              </div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b" style={{ borderColor: "#1e2a4a" }}>
