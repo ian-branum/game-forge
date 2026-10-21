@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "payment",
+    managed_payments: { enabled: false },
     line_items: [
       {
         price: pack.priceId,
