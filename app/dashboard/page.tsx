@@ -788,65 +788,63 @@ function ModifyModal({
         {/* ── Footer: archive + play ── */}
         <div className="px-6 py-4 border-t flex-shrink-0 flex items-center justify-between gap-3"
           style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
-          {isOwner ? (
-            <div className="flex flex-col gap-2 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+
+          {/* Deep archive confirmation replaces the entire footer content */}
+          {deepConfirm ? (
+            <div className="flex items-center justify-between w-full gap-3 flex-wrap">
+              <span className="text-[11px] flex-shrink-0" style={{ color: "#fca5a5" }}>
+                ⚠️ This will permanently hide the game. Are you sure?
+              </span>
+              <div className="flex items-center gap-3 ml-auto flex-shrink-0">
                 <button
-                  onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
-                  disabled={archiving}
-                  className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
-                  style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
-                  {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
+                  onClick={e => { e.stopPropagation(); setDeepConfirm(false); }}
+                  disabled={deepArchiving}
+                  className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition hover:opacity-80"
+                  style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent" }}>
+                  CANCEL
                 </button>
-
-                {scenario.archived && (
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      setDeepArchiveError("");
-                      setDeepConfirm(true);
-                    }}
-                    disabled={deepArchiving}
-                    className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
-                    style={{ color: "#ef4444", border: "1px solid #ef444433", background: "transparent" }}>
-                    ⛔ DEEP ARCHIVE
-                  </button>
-                )}
+                <button
+                  onClick={e => { e.stopPropagation(); handleDeepArchive(); }}
+                  disabled={deepArchiving}
+                  className="font-orbitron text-[10px] tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-50"
+                  style={{ background: "#ef444422", border: "1px solid #ef444466", color: "#ef4444" }}>
+                  {deepArchiving ? "…" : "CONFIRM"}
+                </button>
               </div>
-
-              {deepConfirm && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-[11px]" style={{ color: "#fca5a5" }}>
-                    This will permanently hide the game. Confirm?
-                  </span>
-                  <button
-                    onClick={e => { e.stopPropagation(); handleDeepArchive(); }}
-                    disabled={deepArchiving}
-                    className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition disabled:opacity-50"
-                    style={{ background: "#ef444422", border: "1px solid #ef444466", color: "#ef4444" }}>
-                    {deepArchiving ? "…" : "CONFIRM DEEP ARCHIVE"}
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeepConfirm(false); }}
-                    disabled={deepArchiving}
-                    className="text-[11px] underline transition hover:opacity-70"
-                    style={{ color: "#6b7280" }}>
-                    Cancel
-                  </button>
-                </div>
-              )}
-
               {deepArchiveError && (
-                <p className="text-[11px]" style={{ color: "#f87171" }}>{deepArchiveError}</p>
+                <p className="w-full text-[11px] mt-1" style={{ color: "#f87171" }}>{deepArchiveError}</p>
               )}
             </div>
-          ) : <span />}
-          <Link
-            href={`/play/${scenario.id}`}
-            className="px-6 py-2.5 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
-            style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color, boxShadow: `0 0 20px ${meta.color}22` }}>
-            ▶ PLAY
-          </Link>
+          ) : (
+            <>
+              {isOwner ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
+                    disabled={archiving}
+                    className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
+                    style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
+                    {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
+                  </button>
+                  {scenario.archived && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setDeepArchiveError(""); setDeepConfirm(true); }}
+                      disabled={deepArchiving}
+                      className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
+                      style={{ color: "#ef4444", border: "1px solid #ef444433", background: "transparent" }}>
+                      ⛔ DEEP ARCHIVE
+                    </button>
+                  )}
+                </div>
+              ) : <span />}
+              <Link
+                href={`/play/${scenario.id}`}
+                className="px-6 py-2.5 rounded-xl font-orbitron font-black text-sm tracking-widest transition-all hover:scale-105"
+                style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color, boxShadow: `0 0 20px ${meta.color}22` }}>
+                ▶ PLAY
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>
