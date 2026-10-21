@@ -20,14 +20,7 @@ export async function POST(req: NextRequest) {
     mode: "payment",
     line_items: [
       {
-        price_data: {
-          currency: "usd",
-          unit_amount: pack.price,
-          product_data: {
-            name: `Game Forge — ${pack.label} Pack`,
-            description: `${pack.credits} credits for forging and modifying games`,
-          },
-        },
+        price: pack.priceId,
         quantity: 1,
       },
     ],
