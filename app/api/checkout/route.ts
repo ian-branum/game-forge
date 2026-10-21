@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { stripe, CREDIT_PACKS, PackId } from "@/lib/stripe";
+import { getStripe, CREDIT_PACKS, PackId } from "@/lib/stripe";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const baseUrl = req.nextUrl.origin;
 
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await getStripe().checkout.sessions.create({
     mode: "payment",
     managed_payments: { enabled: false },
     line_items: [

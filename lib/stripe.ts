@@ -1,37 +1,20 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-09-30.endive",
-});
+// Server-only — never import this file in client components
+// Lazy singleton so it's not instantiated at build time when env vars are absent
+let _stripe: Stripe | null = null;
 
-export const CREDIT_PACKS = [
-  {
-    id: "starter",
-    label: "Starter",
-    desc: "Try it out",
-    credits: 10,
-    price: 400,      // cents — for display only
-    priceId: "price_1UT0o1BKdEs0OlCtr0VoVfhK",
-    highlight: false,
-  },
-  {
-    id: "standard",
-    label: "Standard",
-    desc: "Most popular",
-    credits: 50,
-    price: 1500,     // cents — for display only
-    priceId: "price_1UT0oUBKdEs0OlCtk9wHyudZ",
-    highlight: true,
-  },
-  {
-    id: "power",
-    label: "Power",
-    desc: "For serious commanders",
-    credits: 200,
-    price: 5000,     // cents — for display only
-    priceId: "price_1UT0orBKdEs0OlCtTGczNheX",
-    highlight: false,
-  },
-] as const;
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("STRIPE_SECRET_KEY is not set");
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2026-09-30.endive",
+    });
+  }
+  return _stripe;
+}
 
-export type PackId = (typeof CREDIT_PACKS)[number]["id"];
+export { CREDIT_PACKS } from "@/lib/credit-packs";
+export type { PackId } from "@/lib/credit-packs";
