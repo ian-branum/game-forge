@@ -162,7 +162,7 @@ export default function Nav() {
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => signOut({ callbackUrl: "/" })}
+                      onClick={() => signOut({ callbackUrl: window.location.origin + "/" })}
                       className="w-full text-left px-4 py-2 text-xs transition hover:bg-[#ffffff0d]"
                       style={{ color: "#94a3b8" }}>
                       Sign Out
