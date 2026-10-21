@@ -245,7 +245,7 @@ function ModifyModal({
         setActiveVersionId(newVersion.id);
         // Use server-returned title/description if the AI renamed the game
         const updatedTitle = (data.title as string | undefined) ?? title;
-        const updatedDesc = (data.description as string | undefined) ?? description.trim() || null;
+        const updatedDesc = ((data.description as string | undefined) ?? description.trim()) || null;
         setTitle(updatedTitle);
         setDescription(updatedDesc ?? "");
         onModified({ ...scenario, title: updatedTitle, description: updatedDesc, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
