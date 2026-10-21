@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
-import { CREDIT_PACKS } from "@/lib/stripe";
+import { CREDIT_PACKS } from "@/lib/credit-packs";
 
 function CreditsInner() {
   const searchParams = useSearchParams();
@@ -49,7 +49,6 @@ function CreditsInner() {
         Each credit pack lets you forge and modify more games.
       </p>
 
-      {/* Banners */}
       {banner === "success" && (
         <div className="mb-8 px-6 py-3 rounded-lg text-sm font-orbitron tracking-wide"
           style={{ background: "#0a2a0a", border: "1px solid #2a6a2a", color: "#6aff6a" }}>
