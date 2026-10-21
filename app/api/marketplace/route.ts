@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     where: {
       isPublic: true,
       archived: false,
+      deepArchived: false,
       userId: { not: userId },
       id: { notIn: ownedIds },
       ...(category && category !== "all" ? { category } : {}),

@@ -140,6 +140,11 @@ function ModifyModal({
   const [settingActiveId, setSettingActiveId] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
 
+  // Deep archive is archive-then-hide: only offered once the game is archived.
+  const [deepConfirm, setDeepConfirm] = useState(false);
+  const [deepArchiving, setDeepArchiving] = useState(false);
+  const [deepArchiveError, setDeepArchiveError] = useState("");
+
   // Editable title / description (always visible in header area)
   const [title, setTitle] = useState(scenario.title);
   const [description, setDescription] = useState(scenario.description ?? "");
@@ -220,6 +225,25 @@ function ModifyModal({
       onClose();
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const handleDeepArchive = async () => {
+    setDeepArchiving(true);
+    setDeepArchiveError("");
+    try {
+      const res = await fetch(`/api/scenarios/${scenario.id}/deep-archive`, { method: "PATCH" });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setDeepArchiveError(data.error ?? "Could not deep archive this game.");
+        return;
+      }
+      onArchived(scenario.id);
+      onClose();
+    } catch {
+      setDeepArchiveError("Network error — please try again.");
+    } finally {
+      setDeepArchiving(false);
     }
   };
 
@@ -765,13 +789,57 @@ function ModifyModal({
         <div className="px-6 py-4 border-t flex-shrink-0 flex items-center justify-between gap-3"
           style={{ borderColor: "#1e2a4a", background: "#060b1a" }}>
           {isOwner ? (
-            <button
-              onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
-              disabled={archiving}
-              className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
-              style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
-              {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
-            </button>
+            <div className="flex flex-col gap-2 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={e => { e.stopPropagation(); handleArchiveFromModal(); }}
+                  disabled={archiving}
+                  className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
+                  style={{ color: "#6b7280", border: "1px solid #374151", background: "transparent", opacity: archiving ? 0.4 : 1 }}>
+                  {archiving ? "…" : scenario.archived ? "↩ RESTORE" : "🗄 ARCHIVE"}
+                </button>
+
+                {scenario.archived && (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      setDeepArchiveError("");
+                      setDeepConfirm(true);
+                    }}
+                    disabled={deepArchiving}
+                    className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded-lg transition disabled:cursor-not-allowed"
+                    style={{ color: "#ef4444", border: "1px solid #ef444433", background: "transparent" }}>
+                    ⛔ DEEP ARCHIVE
+                  </button>
+                )}
+              </div>
+
+              {deepConfirm && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-[11px]" style={{ color: "#fca5a5" }}>
+                    This will permanently hide the game. Confirm?
+                  </span>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDeepArchive(); }}
+                    disabled={deepArchiving}
+                    className="font-orbitron text-[10px] tracking-widest px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                    style={{ background: "#ef444422", border: "1px solid #ef444466", color: "#ef4444" }}>
+                    {deepArchiving ? "…" : "CONFIRM DEEP ARCHIVE"}
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeepConfirm(false); }}
+                    disabled={deepArchiving}
+                    className="text-[11px] underline transition hover:opacity-70"
+                    style={{ color: "#6b7280" }}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {deepArchiveError && (
+                <p className="text-[11px]" style={{ color: "#f87171" }}>{deepArchiveError}</p>
+              )}
+            </div>
           ) : <span />}
           <Link
             href={`/play/${scenario.id}`}

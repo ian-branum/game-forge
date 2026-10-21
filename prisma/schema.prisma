@@ -71,6 +71,7 @@ model Scenario {
   shareToken      String   @unique @default(cuid())
   createdAt       DateTime @default(now())
   archived        Boolean  @default(false)
+  deepArchived    Boolean  @default(false)
   isPublic        Boolean  @default(false)
   priceToPlay     Int      @default(0)
   priceToClone    Int      @default(0)

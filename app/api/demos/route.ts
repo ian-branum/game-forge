@@ -7,13 +7,13 @@ export async function GET() {
   // Fetch pool of isDemo=true, not archived, for each category
   const [tactical, sandbox] = await Promise.all([
     prisma.scenario.findMany({
-      where: { isDemo: true, archived: false, category: "tactical" },
+      where: { isDemo: true, archived: false, deepArchived: false, category: "tactical" },
       select: { id: true, title: true, category: true },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
     prisma.scenario.findMany({
-      where: { isDemo: true, archived: false, category: "sandbox" },
+      where: { isDemo: true, archived: false, deepArchived: false, category: "sandbox" },
       select: { id: true, title: true, category: true },
       orderBy: { createdAt: "desc" },
       take: 20,

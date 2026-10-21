@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     } as const;
 
     const mine = await prisma.scenario.findMany({
-      where: { userId, archived: false, ...categoryFilter },
+      where: { userId, archived: false, deepArchived: false, ...categoryFilter },
       orderBy: { createdAt: "desc" },
       select: playSelect,
     });
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     const licensed = licensedIds.length
       ? await prisma.scenario.findMany({
-          where: { id: { in: licensedIds }, archived: false, ...categoryFilter },
+          where: { id: { in: licensedIds }, archived: false, deepArchived: false, ...categoryFilter },
           orderBy: { createdAt: "desc" },
           select: playSelect,
         })
@@ -85,6 +85,8 @@ export async function GET(req: NextRequest) {
       // Build is always scoped to the current user's own created scenarios.
       userId,
       archived: archived ? true : false,
+      // Deep-archived games are invisible everywhere, including the archive view.
+      deepArchived: false,
       ...(category && category !== "all" ? { category } : {}),
     },
     orderBy: { createdAt: "desc" },
