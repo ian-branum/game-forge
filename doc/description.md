@@ -95,3 +95,5 @@ Gameplay is data-driven: the dynamic play route reads a scenario's `category` an
 8. **Extract shared services and smaller UI modules.** Centralize generator transport, timeouts, response parsing, logging, and error mapping. Split the dashboard and tactical UI by responsibility while keeping the pure tactical rules separate from rendering.
 
 9. **Update operational documentation.** Replace the starter README with product context, local setup, required environment variables, database migration instructions, service dependencies, test commands, and deployment guidance. Keep `TASK.md` as historical scope or revise it to match the current roadmap.
+
+
