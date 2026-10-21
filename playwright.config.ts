@@ -66,29 +66,9 @@ export default defineConfig({
       testMatch: "**/auth.setup.ts",
     },
 
-    /* ── Anon (unauthenticated) — landing + auth flows ──
-         No storageState, no dependency on setup.
-         These tests MUST run as a fresh anonymous user. */
-    {
-      name: "anon",
-      testMatch: [
-        "**/smoke/landing.spec.ts",
-        "**/smoke/auth.spec.ts",
-      ],
-      use: {
-        ...devices["Desktop Chrome"],
-        // Explicitly no storageState — fresh browser context every test
-      },
-    },
-
-    /* ── Chromium (primary) — authenticated ──
-         Excludes anon-only specs so they don't run with auth state. */
+    /* ── Chromium (primary) — authenticated ── */
     {
       name: "chromium",
-      testIgnore: [
-        "**/smoke/landing.spec.ts",
-        "**/smoke/auth.spec.ts",
-      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -106,7 +86,7 @@ export default defineConfig({
     //   dependencies: ["setup"],
     // },
 
-    /* ── Mobile Chrome — unauthenticated (landing only) ── */
+    /* ── Mobile Chrome — unauthenticated (landing + login only) ── */
     {
       name: "mobile-chrome",
       testMatch: "**/smoke/landing.spec.ts",

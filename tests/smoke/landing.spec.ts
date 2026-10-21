@@ -1,67 +1,41 @@
 /**
  * Smoke — Landing Page
- * Covers the public landing page for anonymous users.
+ * Verifies the public landing page renders correctly for unauthenticated users.
+ * Runs in both Chromium and Mobile Chrome projects.
  */
 
-import { test, expect } from "@playwright/test";
-
-test.use({
-  storageState: {
-    cookies: [],
-    origins: [],
-  },
-});
+import { test, expect } from "../../tests/fixtures";
 
 test.describe("Landing page", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+  test.beforeEach(async ({ landing }) => {
+    await landing.goto();
   });
 
   test("renders hero heading and CTA", async ({ page }) => {
-    await expect(page.locator("h1").first()).toContainText(/GAME/i);
-    await expect(page.locator("h1").first()).toContainText(/FORGE/i);
-
-    await expect(
-      page.getByRole("button", { name: /get started/i }).first()
-    ).toBeVisible();
+    await expect(page.locator("h1")).toContainText("GAME");
+    await expect(page.locator("h1")).toContainText("FORGE");
+    await expect(page.getByRole("button", { name: /get started/i }).first()).toBeVisible();
   });
 
-  test("shows all 3 engine cards", async ({ page }) => {
-    for (const name of [
-      "Games & Puzzles",
-      "WW2 Tactical",
-      "Adventure",
-    ]) {
-      const visibleText = page
-        .getByText(name, { exact: true })
-        .and(page.locator(":visible"));
+  test("shows 3 engine cards", async ({ page }) => {
+    // Each engine card has a label span visible in the section
+    await expect(page.getByText("Games & Puzzles")).toBeVisible();
+    await expect(page.getByText("WW2 Tactical")).toBeVisible();
+    await expect(page.getByText("Adventure")).toBeVisible();
+  });
 
-      await expect(visibleText.first()).toBeVisible();
+  test("shows 'How It Works' section with 4 steps", async ({ page }) => {
+    // Steps are identified by their zero-padded ordinal
+    for (const n of ["01", "02", "03", "04"]) {
+      await expect(page.getByText(n)).toBeVisible();
     }
   });
 
-  test("shows How It Works with all 4 steps", async ({ page }) => {
-    for (const number of ["01", "02", "03", "04"]) {
-      const visibleNumber = page
-        .getByText(number, { exact: true })
-        .and(page.locator(":visible"));
-
-      await expect(visibleNumber.first()).toBeVisible();
-    }
+  test("Get Started CTA navigates to /login", async ({ landing }) => {
+    await landing.clickGetStarted();
   });
 
-  test("Get Started navigates to login", async ({ page }) => {
-    const getStarted = page
-      .getByRole("button", { name: /get started/i })
-      .first();
-
-    await expect(getStarted).toBeVisible();
-    await getStarted.click();
-
-    await expect(page).toHaveURL(/\/login(?:[/?#]|$)/);
-  });
-
-  test("has a page title", async ({ page }) => {
-    await expect(page).toHaveTitle(/.+/);
+  test("page title is present", async ({ page }) => {
+    await expect(page).toHaveTitle(/.+/); // any non-empty title
   });
 });

@@ -6,6 +6,9 @@
 
 import { test, expect } from "@playwright/test";
 
+// All tests in this file are unauthenticated API checks.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("GET /api/demos", () => {
   test("returns tactical and sandbox arrays", async ({ request }) => {
     const res = await request.get("/api/demos");
@@ -38,9 +41,9 @@ test.describe("GET /api/marketplace (unauthenticated)", () => {
   });
 });
 
-test.describe("GET /api/me (unauthenticated)", () => {
+test.describe("GET /api/me/credits (unauthenticated)", () => {
   test("returns 401 for anonymous user", async ({ request }) => {
-    const res = await request.get("/api/me");
+    const res = await request.get("/api/me/credits");
     expect(res.status()).toBe(401);
   });
 });

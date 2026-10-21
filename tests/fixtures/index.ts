@@ -42,15 +42,17 @@ export class LoginPage {
   }
 
   get emailInput() {
-    return this.page.getByLabel(/email/i);
+    return this.page.getByPlaceholder(/you@example\.com/i);
   }
 
   get passwordInput() {
-    return this.page.getByLabel(/^password$/i);
+    // First ••••••••  placeholder = password field (confirm is nth(1) in signup mode)
+    return this.page.getByPlaceholder("••••••••").first();
   }
 
   get signInButton() {
-    return this.page.getByRole("button", { name: /^sign in$/i });
+    // Scoped to form — avoids matching the Nav's "Sign In" button
+    return this.page.locator("form").getByRole("button", { name: /^sign in$/i });
   }
 
   get errorMessage() {
@@ -101,57 +103,6 @@ export class ForgePage {
 
   async goto() {
     await this.page.goto("/forge");
-    await this.page.waitForLoadState("networkidle");
-  }
-
-  get engineOptions() {
-    return this.page.locator("[data-testid='engine-option'], .engine-card");
-  }
-
-  get descriptionInput() {
-    return this.page.getByRole("textbox").first();
-  }
-
-  get forgeButton() {
-    return this.page.getByRole("button", { name: /forge game/i });
-  }
-
-  get creditDisplay() {
-    return this.page.getByText(/credits?/i).first();
-  }
-}
-
-// ── Page Object: Game Details Modal ──────────────────────────────────────────
-
-export class GameDetailsModal {
-  constructor(private page: Page) {}
-
-  get modal() {
-    return this.page.locator("[role='dialog'], [data-testid='game-details-modal']");
-  }
-
-  get shareButton() {
-    return this.modal.getByRole("button", { name: /share/i });
-  }
-
-  get modifyTab() {
-    return this.modal.getByRole("tab", { name: /modify/i });
-  }
-
-  get publishTab() {
-    return this.modal.getByRole("tab", { name: /publish/i });
-  }
-
-  async waitForOpen() {
-    await this.modal.waitFor({ timeout: 6_000 });
-  }
-
-  async openModify() {
-    await this.modifyTab.click();
-  }
-
-  async openPublish() {
-    await this.publishTab.click();
   }
 }
 
@@ -162,7 +113,6 @@ type GameForgeFixtures = {
   loginPage: LoginPage;
   dashboard: DashboardPage;
   forge: ForgePage;
-  gameDetails: GameDetailsModal;
 };
 
 export const test = base.extend<GameForgeFixtures>({
@@ -177,9 +127,6 @@ export const test = base.extend<GameForgeFixtures>({
   },
   forge: async ({ page }, use) => {
     await use(new ForgePage(page));
-  },
-  gameDetails: async ({ page }, use) => {
-    await use(new GameDetailsModal(page));
   },
 });
 

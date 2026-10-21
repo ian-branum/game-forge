@@ -5,6 +5,10 @@
 
 import { test, expect } from "@playwright/test";
 
+// Force anonymous session for all tests in this file,
+// overriding any project-level storageState (e.g. playwright/.auth/user.json).
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("Nav bar", () => {
   test("landing page has a nav bar", async ({ page }) => {
     await page.goto("/");
@@ -20,8 +24,9 @@ test.describe("Nav bar", () => {
 
   test("landing CTA buttons both navigate to /login", async ({ page }) => {
     await page.goto("/");
-    // Both CTA buttons (hero + bottom) lead to /login
-    const btns = page.getByRole("button", { name: /get started/i });
+    // Both CTA buttons contain the text "Get Started" — use getByText to match
+    // partial text reliably regardless of SVG children or middle-dot encoding.
+    const btns = page.getByRole("button").filter({ hasText: /get started/i });
     await expect(btns).toHaveCount(2);
     await btns.first().click();
     await page.waitForURL("**/login");
