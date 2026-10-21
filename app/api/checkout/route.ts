@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid pack" }, { status: 400 });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://game-forge.ai";
+  const baseUrl = req.nextUrl.origin;
 
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "payment",
