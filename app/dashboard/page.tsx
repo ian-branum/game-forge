@@ -149,6 +149,14 @@ function ModifyModal({
   const [modifyPrompt, setModifyPrompt] = useState("");
   const [working, setWorking] = useState(false);
   const [modifyError, setModifyError] = useState("");
+  const [modifySuccess, setModifySuccess] = useState(false);
+  const modifySuccessTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashModifySuccess = () => {
+    setModifySuccess(true);
+    if (modifySuccessTimer.current) clearTimeout(modifySuccessTimer.current);
+    modifySuccessTimer.current = setTimeout(() => setModifySuccess(false), 3000);
+  };
 
   const [copiedId, setCopiedId] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -250,6 +258,7 @@ function ModifyModal({
         setDescription(updatedDesc ?? "");
         onModified({ ...scenario, title: updatedTitle, description: updatedDesc, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
         window.dispatchEvent(new Event("gf:credits"));
+        flashModifySuccess();
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -274,6 +283,7 @@ function ModifyModal({
         setActiveVersionId(newVersion.id);
         onModified({ ...scenario, title, description: description.trim() || null, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
         window.dispatchEvent(new Event("gf:credits"));
+        flashModifySuccess();
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -306,6 +316,7 @@ function ModifyModal({
           freeFixUsed: true, // hide the button immediately after use
         });
         window.dispatchEvent(new Event("gf:credits"));
+        flashModifySuccess();
       }
     } catch {
       setModifyError("Something went wrong. Please try again.");
@@ -610,6 +621,16 @@ function ModifyModal({
                       cursor: modifyMode === "regenerate" ? "not-allowed" : "auto",
                     }}
                   />
+
+                  {modifySuccess && (
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg mb-3"
+                      style={{ background: "#22c55e11", border: "1px solid #22c55e44" }}>
+                      <span className="text-lg">✅</span>
+                      <span className="font-orbitron text-xs tracking-widest text-green-400">
+                        DONE! New version is live — click PLAY to try it.
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-end gap-3">
                     {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
