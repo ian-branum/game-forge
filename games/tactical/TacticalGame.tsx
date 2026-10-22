@@ -14,6 +14,12 @@ import {
 } from "./engine/engine";
 import { playSquadFire, playLeaderFire, playMGFire } from "./engine/sounds";
 import { animateTracers } from "./engine/tracers";
+import {
+  FACTION_FILL,
+  FACTION_STROKE,
+  NATOInfantry,
+  NATOSymbol,
+} from "./engine/NATOSymbols";
 
 // ─── Hex geometry ─────────────────────────────────────────────────────────────
 const HEX_SIZE = 26;
@@ -94,78 +100,6 @@ const STATUS_COLORS: Record<string, string> = {
   broken:     "#ef4444",
   eliminated: "#6b7280",
 };
-
-const FACTION_FILL: Record<string, string>   = { allied: "#4a5e2a", axis: "#6b7355" };
-const FACTION_STROKE: Record<string, string> = { allied: "#a0b860", axis: "#c8ceb0" };
-
-// ─── NATO symbology ───────────────────────────────────────────────────────────
-type NATOProps = { fill: string; stroke: string; opacity?: number };
-
-function NATOInfantry({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <circle cx="13" cy="3.5" r="2" fill={stroke} />
-      <circle cx="23" cy="3.5" r="2" fill={stroke} />
-    </g>
-  );
-}
-
-function NATОМG({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <text x="18" y="20" textAnchor="middle" fontSize="7" fill={stroke} fontWeight="bold" fontFamily="monospace">MG</text>
-      <circle cx="18" cy="3.5" r="2" fill={stroke} />
-    </g>
-  );
-}
-
-function NATOMortar({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <text x="18" y="20" textAnchor="middle" fontSize="7" fill={stroke} fontWeight="bold" fontFamily="monospace">MTR</text>
-    </g>
-  );
-}
-
-function NATOLeader({ fill, stroke, label, opacity = 1 }: NATOProps & { label: string }) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="4" width="32" height="20" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <text x="18" y="17" textAnchor="middle" fontSize="7.5" fill={stroke} fontWeight="bold" fontFamily="monospace">
-        {label}
-      </text>
-    </g>
-  );
-}
-
-function NATOSymbol({ unit, opacity }: { unit: Unit; opacity?: number }) {
-  const fill   = FACTION_FILL[unit.faction];
-  const stroke = FACTION_STROKE[unit.faction];
-  const op     = opacity ?? 1;
-
-  if (unit.type === "leader") {
-    const n = unit.name.toLowerCase();
-    const label = n.includes("plt") || n.includes("platoon") ? "PLT"
-      : n.includes("coy") || n.includes("company") || n.includes("cdr") ? "COY"
-      : n.includes("1sg") || n.includes("first sgt") ? "1SG"
-      : n.includes("sgt") || n.includes("sergeant") || n.includes("feldwebel") ? "SGT"
-      : n.includes("lt") || n.includes("lieutenant") || n.includes("leutnant") ? "LT"
-      : "LDR";
-    return <NATOLeader fill={fill} stroke={stroke} label={label} opacity={op} />;
-  }
-  if (unit.type === "mg") return <NATОМG fill={fill} stroke={stroke} opacity={op} />;
-  if (unit.type === "mortar") return <NATOMortar fill={fill} stroke={stroke} opacity={op} />;
-  return <NATOInfantry fill={fill} stroke={stroke} opacity={op} />;
-}
 
 function TerrainIcon({ terrain, cx, cy }: { terrain: string; cx: number; cy: number }) {
   if (terrain === "woods") {
@@ -473,7 +407,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
             {scenario.units.filter(u => u.faction === "allied").map(u => (
               <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400 mb-1">
                 <svg width="28" height="20" viewBox="0 0 36 26">
-                  <NATOSymbol unit={{ ...u, status: "normal", mpUsed: 0, hasFired: false }} />
+                  <NATOSymbol unit={u} />
                 </svg>
                 <span>{u.name}</span>
               </div>
@@ -484,7 +418,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
             {scenario.units.filter(u => u.faction === "axis").map(u => (
               <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400 mb-1">
                 <svg width="28" height="20" viewBox="0 0 36 26">
-                  <NATOSymbol unit={{ ...u, status: "normal", mpUsed: 0, hasFired: false }} />
+                  <NATOSymbol unit={u} />
                 </svg>
                 <span>{u.name}</span>
               </div>

@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import type { ScenarioDefinition } from "./schema";
 import type { Faction, TerrainType, UnitType } from "./engine/types";
 import { useEditorHistory } from "./engine/useEditorHistory";
+import {
+  NATOTypeSymbol,
+  NATOSymbol,
+  EDITOR_FACTION_FILL,
+  EDITOR_FACTION_STROKE,
+} from "./engine/NATOSymbols";
 
 // ─── Hex geometry (mirrors TacticalGame.tsx) ─────────────────────────────────
 const HEX_SIZE = 26;
@@ -64,40 +70,50 @@ type UnitTemplate = {
   movement: number;
   range: number;
   morale: number;
-  emoji: string;
 };
 
+// Generic, faction-neutral names — the symbol already conveys the faction.
 const UNIT_TEMPLATES: Record<Faction, Record<UnitType, UnitTemplate>> = {
   allied: {
-    infantry: { name: "Rifle Squad", attack: 4, defense: 3, movement: 4, range: 3, morale: 7, emoji: "🪖" },
-    leader: { name: "Sergeant", attack: 2, defense: 2, movement: 5, range: 2, morale: 9, emoji: "⭐" },
-    mg: { name: "BAR Team", attack: 6, defense: 2, movement: 3, range: 5, morale: 7, emoji: "🔫" },
-    mortar: { name: "Mortar Team", attack: 5, defense: 2, movement: 2, range: 6, morale: 6, emoji: "💣" },
-    vehicle: { name: "Sherman", attack: 8, defense: 6, movement: 5, range: 5, morale: 9, emoji: "🛡" },
+    infantry: { name: "Rifle Squad", attack: 4, defense: 3, movement: 4, range: 3, morale: 7 },
+    leader: { name: "Sergeant", attack: 2, defense: 2, movement: 5, range: 2, morale: 9 },
+    mg: { name: "MG Team", attack: 6, defense: 2, movement: 3, range: 5, morale: 7 },
+    mortar: { name: "Mortar Team", attack: 5, defense: 2, movement: 2, range: 6, morale: 6 },
+    vehicle: { name: "Tank", attack: 8, defense: 6, movement: 5, range: 5, morale: 9 },
   },
   axis: {
-    infantry: { name: "Schütze", attack: 4, defense: 3, movement: 4, range: 3, morale: 7, emoji: "🪖" },
-    leader: { name: "Unteroffizier", attack: 2, defense: 2, movement: 5, range: 2, morale: 9, emoji: "⭐" },
-    mg: { name: "MG-42 Team", attack: 7, defense: 2, movement: 2, range: 6, morale: 7, emoji: "🔫" },
-    mortar: { name: "Granatwerfer", attack: 5, defense: 2, movement: 2, range: 6, morale: 6, emoji: "💣" },
-    vehicle: { name: "Panzer IV", attack: 8, defense: 7, movement: 5, range: 5, morale: 9, emoji: "🛡" },
+    infantry: { name: "Rifle Squad", attack: 4, defense: 3, movement: 4, range: 3, morale: 7 },
+    leader: { name: "Sergeant", attack: 2, defense: 2, movement: 5, range: 2, morale: 9 },
+    mg: { name: "MG Team", attack: 7, defense: 2, movement: 2, range: 6, morale: 7 },
+    mortar: { name: "Mortar Team", attack: 5, defense: 2, movement: 2, range: 6, morale: 6 },
+    vehicle: { name: "Tank", attack: 8, defense: 7, movement: 5, range: 5, morale: 9 },
   },
 };
 
-const UNIT_PALETTE: { faction: Faction; type: UnitType; emoji: string; label: string }[] = [
-  { faction: "allied", type: "infantry", emoji: "🪖", label: "Rifle Squad" },
-  { faction: "allied", type: "leader", emoji: "⭐", label: "Leader" },
-  { faction: "allied", type: "mg", emoji: "🔫", label: "MG Team" },
-  { faction: "allied", type: "mortar", emoji: "💣", label: "Mortar" },
-  { faction: "allied", type: "vehicle", emoji: "🛡", label: "Sherman" },
-  { faction: "axis", type: "infantry", emoji: "🪖", label: "Schütze" },
-  { faction: "axis", type: "leader", emoji: "⭐", label: "Leader" },
-  { faction: "axis", type: "mg", emoji: "🔫", label: "MG-42" },
-  { faction: "axis", type: "mortar", emoji: "💣", label: "Granatwerfer" },
-  { faction: "axis", type: "vehicle", emoji: "🛡", label: "Panzer IV" },
+// The scenario schema still requires an emoji per unit (AI-placed units use it
+// in the engine), so newly placed editor units carry one — it just isn't drawn.
+const EMOJI_FOR_TYPE: Record<UnitType, string> = {
+  infantry: "🪖",
+  leader: "⭐",
+  mg: "🔫",
+  mortar: "💣",
+  vehicle: "🛡",
+};
+
+const UNIT_PALETTE: { faction: Faction; type: UnitType; label: string }[] = [
+  { faction: "allied", type: "infantry", label: "Rifle Squad" },
+  { faction: "allied", type: "leader", label: "Leader" },
+  { faction: "allied", type: "mg", label: "MG Team" },
+  { faction: "allied", type: "mortar", label: "Mortar" },
+  { faction: "allied", type: "vehicle", label: "Tank" },
+  { faction: "axis", type: "infantry", label: "Rifle Squad" },
+  { faction: "axis", type: "leader", label: "Leader" },
+  { faction: "axis", type: "mg", label: "MG Team" },
+  { faction: "axis", type: "mortar", label: "Mortar" },
+  { faction: "axis", type: "vehicle", label: "Tank" },
 ];
 
-const FACTION_COLOR: Record<Faction, string> = { allied: "#4488ff", axis: "#cc3333" };
+const FACTION_COLOR: Record<Faction, string> = { allied: "#6080c0", axis: "#b08040" };
 
 type SelectedTool =
   | { kind: "terrain"; terrain: TerrainType }
@@ -187,10 +203,23 @@ export default function ScenarioEditor({
   const [stackPicker, setStackPicker] = useState<{ row: number; col: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [turnsInput, setTurnsInput] = useState(String(initialScenario.turnsTotal));
+  const [objectivesInput, setObjectivesInput] = useState(
+    String(initialScenario.alliedObjectivesNeeded)
+  );
 
   const draggingRef = useRef(false);
   const touchRef = useRef(false);
   const strokeActiveRef = useRef(false);
+
+  // Inputs mirror the document, so undo/redo updates them too.
+  useEffect(() => {
+    setTurnsInput(String(scenario.turnsTotal));
+  }, [scenario.turnsTotal]);
+  useEffect(() => {
+    setObjectivesInput(String(scenario.alliedObjectivesNeeded));
+  }, [scenario.alliedObjectivesNeeded]);
 
   const rows = scenario.map.length;
   const cols = scenario.map[0]?.length ?? 0;
@@ -242,7 +271,7 @@ export default function ScenarioEditor({
       range: tpl.range,
       morale: tpl.morale,
       pos: { row, col },
-      emoji: tpl.emoji,
+      emoji: EMOJI_FOR_TYPE[type],
     };
     commit(draft => { draft.units = [...draft.units, unit]; });
   };
@@ -402,6 +431,40 @@ export default function ScenarioEditor({
     setStackPicker(null);
   };
 
+  const maxObjectives = Math.max(1, scenario.objectives.length);
+
+  const handleTurnsChange = (raw: string) => {
+    setTurnsInput(raw);
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 30) return;
+    commit(draft => { draft.turnsTotal = n; });
+  };
+
+  const handleTurnsBlur = () => {
+    const n = Number.parseInt(turnsInput, 10);
+    const clamped = Number.isFinite(n) ? Math.min(30, Math.max(1, n)) : scenario.turnsTotal;
+    if (clamped !== scenario.turnsTotal) commit(draft => { draft.turnsTotal = clamped; });
+    setTurnsInput(String(clamped));
+  };
+
+  const handleObjectivesChange = (raw: string) => {
+    setObjectivesInput(raw);
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > maxObjectives) return;
+    commit(draft => { draft.alliedObjectivesNeeded = n; });
+  };
+
+  const handleObjectivesBlur = () => {
+    const n = Number.parseInt(objectivesInput, 10);
+    const clamped = Number.isFinite(n)
+      ? Math.min(maxObjectives, Math.max(1, n))
+      : scenario.alliedObjectivesNeeded;
+    if (clamped !== scenario.alliedObjectivesNeeded) {
+      commit(draft => { draft.alliedObjectivesNeeded = clamped; });
+    }
+    setObjectivesInput(String(clamped));
+  };
+
   const handleDone = async () => {
     setSaving(true);
     setError("");
@@ -475,7 +538,14 @@ export default function ScenarioEditor({
                 }
                 onClick={() => selectTool({ kind: "unit", faction: "allied", unitType: u.type })}
               >
-                <span className="w-4 text-center flex-shrink-0">{u.emoji}</span>
+                <svg width={39} height={28} viewBox="0 0 36 26" className="flex-shrink-0">
+                  <NATOTypeSymbol
+                    type={u.type}
+                    name={u.label}
+                    fill={EDITOR_FACTION_FILL.allied}
+                    stroke={EDITOR_FACTION_STROKE.allied}
+                  />
+                </svg>
                 {u.label}
               </ToolButton>
             ))}
@@ -499,7 +569,14 @@ export default function ScenarioEditor({
                 }
                 onClick={() => selectTool({ kind: "unit", faction: "axis", unitType: u.type })}
               >
-                <span className="w-4 text-center flex-shrink-0">{u.emoji}</span>
+                <svg width={39} height={28} viewBox="0 0 36 26" className="flex-shrink-0">
+                  <NATOTypeSymbol
+                    type={u.type}
+                    name={u.label}
+                    fill={EDITOR_FACTION_FILL.axis}
+                    stroke={EDITOR_FACTION_STROKE.axis}
+                  />
+                </svg>
                 {u.label}
               </ToolButton>
             ))}
@@ -600,25 +677,17 @@ export default function ScenarioEditor({
                       )}
 
                       {unitsHere.map((u, i) => (
-                        <g key={u.id} style={{ pointerEvents: "none" }}>
-                          <rect
-                            x={cx - 9 + i * 2}
-                            y={cy - 8 + i * 2}
-                            width={18}
-                            height={16}
-                            rx={3}
-                            fill={`${FACTION_COLOR[u.faction]}44`}
-                            stroke={FACTION_COLOR[u.faction]}
-                            strokeWidth={u.id === selectedUnitId ? 2.5 : 1}
+                        <g
+                          key={u.id}
+                          transform={`translate(${cx - 15 + i * 2}, ${cy - 10.5 + i * 2}) scale(0.82)`}
+                          opacity={u.id === selectedUnitId ? 1 : 0.92}
+                          style={{ pointerEvents: "none" }}
+                        >
+                          <NATOSymbol
+                            unit={u}
+                            fill={EDITOR_FACTION_FILL[u.faction]}
+                            stroke={EDITOR_FACTION_STROKE[u.faction]}
                           />
-                          <text
-                            x={cx + i * 2}
-                            y={cy + 4 + i * 2}
-                            textAnchor="middle"
-                            fontSize={11}
-                          >
-                            {u.emoji}
-                          </text>
                         </g>
                       ))}
 
@@ -660,9 +729,16 @@ export default function ScenarioEditor({
                   key={u.id}
                   type="button"
                   onClick={() => selectUnit(u.id)}
-                  className="block w-full text-left text-xs px-2 py-1 rounded text-gray-300 hover:text-white hover:bg-gray-800"
+                  className="flex items-center gap-2 w-full text-left text-xs px-2 py-1 rounded text-gray-300 hover:text-white hover:bg-gray-800"
                 >
-                  {u.emoji} {u.name}
+                  <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
+                    <NATOSymbol
+                      unit={u}
+                      fill={EDITOR_FACTION_FILL[u.faction]}
+                      stroke={EDITOR_FACTION_STROKE[u.faction]}
+                    />
+                  </svg>
+                  {u.name}
                   <span className="ml-2 text-[10px]" style={{ color: FACTION_COLOR[u.faction] }}>
                     {u.faction}
                   </span>
@@ -698,7 +774,13 @@ export default function ScenarioEditor({
                   : "text-gray-400 hover:text-white hover:bg-gray-800/60"
               }`}
             >
-              <span className="w-4 text-center flex-shrink-0">{u.emoji}</span>
+              <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
+                <NATOSymbol
+                  unit={u}
+                  fill={EDITOR_FACTION_FILL[u.faction]}
+                  stroke={EDITOR_FACTION_STROKE[u.faction]}
+                />
+              </svg>
               <span className="truncate">{u.name}</span>
               <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">
                 {u.pos.row},{u.pos.col}
@@ -721,7 +803,13 @@ export default function ScenarioEditor({
                   : "text-gray-400 hover:text-white hover:bg-gray-800/60"
               }`}
             >
-              <span className="w-4 text-center flex-shrink-0">{u.emoji}</span>
+              <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
+                <NATOSymbol
+                  unit={u}
+                  fill={EDITOR_FACTION_FILL[u.faction]}
+                  stroke={EDITOR_FACTION_STROKE[u.faction]}
+                />
+              </svg>
               <span className="truncate">{u.name}</span>
               <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">
                 {u.pos.row},{u.pos.col}
@@ -746,6 +834,61 @@ export default function ScenarioEditor({
             </div>
           ))}
         </aside>
+      </div>
+
+      {/* ── Scenario settings ────────────────────────────────────────────── */}
+      <div className="border-t border-gray-800" style={{ background: "#060b1a" }}>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-1.5 text-left"
+        >
+          <span className="font-orbitron text-[10px] tracking-[0.2em] text-gray-500">
+            SCENARIO SETTINGS
+          </span>
+          <span className="text-gray-600 text-[10px]">
+            {settingsOpen ? "▾ HIDE" : "▸ SHOW"}
+          </span>
+        </button>
+
+        {settingsOpen && (
+          <div className="flex flex-wrap items-end gap-6 px-4 pb-3 pt-1">
+            <label className="flex flex-col gap-1">
+              <span className="font-orbitron text-[9px] tracking-[0.18em] text-gray-500">TURNS</span>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={turnsInput}
+                onChange={e => handleTurnsChange(e.target.value)}
+                onBlur={handleTurnsBlur}
+                className="w-20 px-2 py-1.5 rounded text-sm text-gray-200"
+                style={{ background: "#0a0f2e", border: "1px solid #1e2a4a" }}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="font-orbitron text-[9px] tracking-[0.18em] text-gray-500">
+                OBJECTIVES TO WIN
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={maxObjectives}
+                value={objectivesInput}
+                onChange={e => handleObjectivesChange(e.target.value)}
+                onBlur={handleObjectivesBlur}
+                className="w-20 px-2 py-1.5 rounded text-sm text-gray-200"
+                style={{ background: "#0a0f2e", border: "1px solid #1e2a4a" }}
+              />
+            </label>
+
+            <span className="text-[10px] text-gray-600 pb-2">
+              {scenario.objectives.length} objective{scenario.objectives.length === 1 ? "" : "s"} on
+              the map
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
