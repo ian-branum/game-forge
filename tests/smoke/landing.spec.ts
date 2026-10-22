@@ -25,9 +25,9 @@ test.describe("Landing page", () => {
 
   test("shows 3 engine cards", async ({ page }) => {
     // Each engine card has a label span visible in the section
-    await expect(page.getByText("Games & Puzzles")).toBeVisible();
-    await expect(page.getByText("WW2 Tactical")).toBeVisible();
-    await expect(page.getByText("Adventure")).toBeVisible();
+    await expect(page.getByText("Games & Puzzles", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("WW2 Tactical", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Adventure", { exact: true }).first()).toBeVisible();
   });
 
   test("shows 'How It Works' section with 4 steps", async ({ page }) => {
