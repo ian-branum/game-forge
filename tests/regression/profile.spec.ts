@@ -65,10 +65,15 @@ test.describe("Profile modal — Display Name (DB-09, DB-10)", () => {
   test("DB-10 saving a blank Display Name shows an error", async ({ page }) => {
     await openProfileModal(page);
     const modal = page.locator(PROFILE_MODAL);
+    // Wait for the profile fetch to complete — button is disabled while loading=true
+    const saveBtn = modal.getByRole("button", { name: "SAVE PROFILE" });
+    await expect(saveBtn).toBeEnabled({ timeout: 8_000 });
     const nameInput = modal.locator('input[type="text"]').first();
     await nameInput.clear();
-    await modal.getByRole("button", { name: "SAVE PROFILE" }).click();
-    // Error rendered as <p style="color: #f87171">
+    // Confirm it's actually blank before clicking
+    await expect(nameInput).toHaveValue("");
+    await saveBtn.click();
+    // Error rendered as inline text in the modal
     await expect(modal.getByText(/display name cannot be empty/i)).toBeVisible({ timeout: 4_000 });
   });
 });
@@ -112,37 +117,46 @@ test.describe("Profile modal — Avatar (DB-11, DB-12)", () => {
 
 test.describe("Profile modal — Change Password (DB-13, DB-14, DB-15)", () => {
   test("DB-13 OAuth users do not see Change Password section", async ({ page }) => {
-    // Only relevant for OAuth accounts — skip unless OAUTH_AUTH_FILE is set
-    if (!process.env.OAUTH_AUTH_FILE) { test.skip(); return; }
+    // The E2E test account (shaniejohnson026@gmail.com) is a Google OAuth account
+    // so this test runs directly — no separate auth file needed.
     await openProfileModal(page);
     const modal = page.locator(PROFILE_MODAL);
-    await expect(modal.getByText(/change password/i)).not.toBeVisible();
-    await expect(modal.getByText(/sign in with google/i)).toBeVisible();
+    // Wait for profile fetch to complete (hasPassword comes from API)
+    await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
+    // Password fields must NOT be visible for OAuth accounts
+    await expect(modal.getByPlaceholder("Current password")).not.toBeVisible();
+    // App shows a note explaining why there's no password section
+    await expect(modal.getByText(/sign in with google|no password/i)).toBeVisible();
   });
 
   test("DB-14 email/password users see Current, New and Confirm Password fields", async ({ page }) => {
-    await openProfileModal(page);
-    const modal = page.locator(PROFILE_MODAL);
-    // Password section only renders when hasPassword=true (email/password accounts)
-    const currentPwd = modal.getByPlaceholder("Current password");
-    if (!(await currentPwd.isVisible().catch(() => false))) {
-      test.skip(); // OAuth account — no password section
+    // The primary E2E account is OAuth — this test requires an email/password account.
+    // Skipping here is correct: DB-14 is covered by manual testing or a dedicated
+    // email/password test account. Set E2E_EMAIL_PASSWORD_ACCOUNT=true to un-skip
+    // once such an account is configured.
+    if (!process.env.E2E_EMAIL_PASSWORD_ACCOUNT) {
+      test.skip();
       return;
     }
+    await openProfileModal(page);
+    const modal = page.locator(PROFILE_MODAL);
+    await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
+    await expect(modal.getByPlaceholder("Current password")).toBeVisible();
     await expect(modal.getByPlaceholder(/new password/i)).toBeVisible();
     await expect(modal.getByPlaceholder("Confirm new password")).toBeVisible();
     await expect(modal.getByRole("button", { name: "UPDATE PASSWORD" })).toBeVisible();
   });
 
   test("DB-15 new password shorter than 8 characters shows error", async ({ page }) => {
-    await openProfileModal(page);
-    const modal = page.locator(PROFILE_MODAL);
-    const currentPwd = modal.getByPlaceholder("Current password");
-    if (!(await currentPwd.isVisible().catch(() => false))) {
-      test.skip(); // OAuth account
+    // Same as DB-14 — requires an email/password account
+    if (!process.env.E2E_EMAIL_PASSWORD_ACCOUNT) {
+      test.skip();
       return;
     }
-    await currentPwd.fill("anything123");
+    await openProfileModal(page);
+    const modal = page.locator(PROFILE_MODAL);
+    await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
+    await modal.getByPlaceholder("Current password").fill("anything123");
     await modal.getByPlaceholder(/new password/i).fill("short");
     await modal.getByPlaceholder("Confirm new password").fill("short");
     await modal.getByRole("button", { name: "UPDATE PASSWORD" }).click();
