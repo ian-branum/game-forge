@@ -491,17 +491,17 @@ export function rallyUnit(state: GameState, unitId: string): GameState {
     return { ...s, log: [`${u.name} rallies to normal`, ...s.log] };
   }
 
-  // Broken: roll needed
+  // Broken: roll needed — 2D6 keeps rally on the same bell curve as fire.
   const leaderBonus = hasLeaderBonus(s, u, 2);
-  const roll = Math.random() * 10 + leaderBonus;
-  const threshold = 10 - u.morale;
+  const roll = roll2D6() + leaderBonus;
+  const threshold = 12 - u.morale;
 
   if (roll > threshold) {
     u.status = "normal";
     u.morale = Math.min(u.morale + 1, 10);
     return { ...s, log: [`${u.name} rallies! Status restored.`, ...s.log] };
   } else {
-    return { ...s, log: [`${u.name} fails to rally (rolled ${roll.toFixed(1)} vs ${threshold})`, ...s.log] };
+    return { ...s, log: [`${u.name} fails to rally (rolled ${roll} vs ${threshold})`, ...s.log] };
   }
 }
 

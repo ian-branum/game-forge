@@ -272,7 +272,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <li><strong style={{ color: "#6b7280" }}>Eliminated</strong> — removed from play permanently</li>
           </ul>
           <p><strong style={{ color: "#e2e8f0" }}>Squads vs Teams:</strong> squads (Rifle, Assault) degrade step by step — Suppressed → Broken → Eliminated. Teams (MG, Mortar, Leader, Vehicle) cannot be broken: a BROKEN result eliminates them instead.</p>
-          <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>Random(0–10) + Leader Bonus &gt; (10 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>2D6 + Leader Bonus &gt; (12 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
         </RulesSection>
 
         <RulesSection num="7.0" title="LEADERS">
