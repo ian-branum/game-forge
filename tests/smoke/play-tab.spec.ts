@@ -7,20 +7,21 @@
 import { test, expect } from "../../tests/fixtures";
 
 test.describe("Play tab — empty state", () => {
-  // NOTE: This describe block applies to accounts with no games.
-  // In CI, the test account may already have games — skip gracefully if so.
+  // NOTE: These tests apply to accounts with no games.
+  // The empty state buttons read "⚡ BUILD A GAME" and "🏪 BROWSE MARKETPLACE".
+  // If the account already has games the empty state won't render — skip gracefully.
   test("PL-01 shows build and browse options when no games exist", async ({
     dashboard,
     page,
   }) => {
     await dashboard.goto();
-    // Play tab is default
-    const hasGames = (await page.locator("[data-testid='game-card']").count()) > 0;
+    // Cards are plain divs in a grid — detect by the PLAY button inside them
+    const hasGames = (await page.locator('a[href^="/play/"]').count()) > 0;
     if (!hasGames) {
       await expect(page.getByRole("button", { name: /build a game/i })).toBeVisible();
       await expect(page.getByRole("button", { name: /browse marketplace/i })).toBeVisible();
     } else {
-      // Account has games — skip empty-state check
+      // Account has games — empty state not shown, skip
       test.skip();
     }
   });
@@ -30,13 +31,12 @@ test.describe("Play tab — empty state", () => {
     page,
   }) => {
     await dashboard.goto();
+    const hasGames = (await page.locator('a[href^="/play/"]').count()) > 0;
+    if (hasGames) { test.skip(); return; }
+
     const emptyBuildBtn = page.getByRole("button", { name: /build a game/i });
-    if (await emptyBuildBtn.isVisible()) {
-      await emptyBuildBtn.click();
-      await expect(page.getByText("BUILD", { exact: true }).first()).toBeVisible();
-    } else {
-      test.skip();
-    }
+    await emptyBuildBtn.click();
+    await expect(page.getByText("BUILD", { exact: true }).first()).toBeVisible();
   });
 
   test("PL-03 Browse Marketplace button switches to Buy tab", async ({
@@ -44,13 +44,12 @@ test.describe("Play tab — empty state", () => {
     page,
   }) => {
     await dashboard.goto();
+    const hasGames = (await page.locator('a[href^="/play/"]').count()) > 0;
+    if (hasGames) { test.skip(); return; }
+
     const browseBtn = page.getByRole("button", { name: /browse marketplace/i });
-    if (await browseBtn.isVisible()) {
-      await browseBtn.click();
-      await expect(page.getByText("BUY", { exact: true }).first()).toBeVisible();
-    } else {
-      test.skip();
-    }
+    await browseBtn.click();
+    await expect(page.getByText("BUY", { exact: true }).first()).toBeVisible();
   });
 });
 
@@ -60,12 +59,11 @@ test.describe("Play tab — with games", () => {
   });
 
   test("PL-04 game cards are shown when account has games", async ({ page }) => {
-    // If this account has games, cards should be visible
-    // If not, the empty state shows — either is valid
-    const cards = page.locator("[data-testid='game-card'], .game-card");
+    // Cards have no data-testid — detect via the ▶ PLAY link inside each card
+    const playLinks = page.locator('a[href^="/play/"]');
     const emptyState = page.getByRole("button", { name: /build a game/i });
-    const hasCards = await cards.count() > 0;
-    const hasEmpty = await emptyState.isVisible();
+    const hasCards = (await playLinks.count()) > 0;
+    const hasEmpty = await emptyState.isVisible().catch(() => false);
     expect(hasCards || hasEmpty).toBe(true);
   });
 
