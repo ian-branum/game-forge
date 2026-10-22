@@ -14,10 +14,11 @@ test.describe("Play tab — with games", () => {
   });
 
   test("PL-04 game cards are shown when account has games", async ({ page }) => {
+    // Wait for the async fetch to finish — loading spinner disappears
+    await page.waitForSelector(".animate-pulse", { state: "hidden", timeout: 10_000 }).catch(() => {});
     // Cards contain a ▶ PLAY link — detect by href prefix
     const playLinks = page.locator('a[href^="/play/"]');
-    const count = await playLinks.count();
-    expect(count).toBeGreaterThan(0);
+    await expect(playLinks.first()).toBeVisible({ timeout: 8_000 });
   });
 
   test("PL-05 engine filter dropdown is present on Play tab", async ({ page }) => {
