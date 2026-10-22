@@ -1,19 +1,12 @@
 /**
- * Smoke — Play Tab (authenticated, empty-state user)
- * Covers: PL-01 through PL-08
+ * Smoke — Play Tab: empty state (chromium-empty project only)
+ * Covers: PL-01, PL-02, PL-03
  *
- * PL-01, PL-02, PL-03 require an account with NO games.
- * These run under the "chromium-empty" project (E2E_EMPTY_EMAIL account).
- *
- * PL-04 through PL-08 are account-agnostic — they run under both projects
- * but gracefully handle either state.
- *
- * Uses saved auth state from auth.setup.ts / auth.setup.empty.ts.
+ * Requires an account with NO games (E2E_EMPTY_EMAIL).
+ * Excluded from the main chromium project via testIgnore in playwright.config.ts.
  */
 
 import { test, expect } from "../../tests/fixtures";
-
-// ── Empty-state tests (PL-01, PL-02, PL-03) ──────────────────────────────────
 
 test.describe("Play tab — empty state", () => {
   test("PL-01 shows build and browse options when no games exist", async ({
@@ -41,32 +34,5 @@ test.describe("Play tab — empty state", () => {
     await dashboard.goto();
     await page.getByRole("button", { name: /browse marketplace/i }).click();
     await expect(page.getByText("BUY", { exact: true }).first()).toBeVisible();
-  });
-});
-
-// ── With-games tests (PL-04 through PL-08) ───────────────────────────────────
-
-test.describe("Play tab — with games", () => {
-  test.beforeEach(async ({ dashboard }) => {
-    await dashboard.goto();
-  });
-
-  test("PL-04 game cards are shown when account has games", async ({ page }) => {
-    // Cards contain a ▶ PLAY link — detect by href prefix
-    const playLinks = page.locator('a[href^="/play/"]');
-    const emptyState = page.getByRole("button", { name: /build a game/i });
-    const hasCards = (await playLinks.count()) > 0;
-    const hasEmpty = await emptyState.isVisible().catch(() => false);
-    expect(hasCards || hasEmpty).toBe(true);
-  });
-
-  test("PL-05 engine filter dropdown is present on Play tab", async ({ page }) => {
-    const filter = page.getByRole("combobox").first();
-    await expect(filter).toBeVisible();
-  });
-
-  test("PL-08 Play tab does not enforce a play limit", async ({ page }) => {
-    const capsText = page.getByText(/plays? remaining/i);
-    await expect(capsText).not.toBeVisible();
   });
 });

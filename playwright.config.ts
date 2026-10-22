@@ -75,6 +75,8 @@ export default defineConfig({
     /* ── Chromium (primary) — authenticated ── */
     {
       name: "chromium",
+      // play-tab.spec.ts is owned by chromium-empty (requires a no-games account)
+      testIgnore: "**/smoke/play-tab.spec.ts",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
