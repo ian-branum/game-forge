@@ -122,8 +122,9 @@ test.describe("Game Details modal — header", () => {
     const opened = await openFirstGameModal(page);
     if (!opened) { test.skip(); return; }
     const modal = page.locator(MODAL);
-    await expect(modal.getByRole("button", { name: "MODIFY" })).toBeVisible();
-    await expect(modal.getByRole("button", { name: "PUBLISH" })).toBeVisible();
+    // Tab buttons are rounded-full — distinguishes them from CODE MODIFY / REGENERATE action buttons
+    await expect(modal.locator("button.rounded-full", { hasText: /^MODIFY$/ })).toBeVisible();
+    await expect(modal.locator("button.rounded-full", { hasText: /^PUBLISH$/ })).toBeVisible();
   });
 });
 
@@ -256,8 +257,33 @@ test.describe("Game Details — Publish tab", () => {
   });
 
   test("PB-07 making a game public makes it visible in Buy tab", async ({ page }) => {
-    const opened = await openPublishTab(page);
-    if (!opened) { test.skip(); return; }
+    // Open the first game the test user OWNS (has MODIFY/PUBLISH tabs) by iterating rows
+    await page.goto("/dashboard");
+    await page.waitForSelector("text=PLAY", { timeout: 10_000 });
+    await page.getByRole("button", { name: /^build$/i }).click();
+    await page.waitForSelector("text=BUILD", { timeout: 5_000 });
+
+    const rows = page.locator("table tbody tr");
+    const rowCount = await rows.count();
+    let publishTabFound = false;
+
+    for (let i = 0; i < rowCount; i++) {
+      await rows.nth(i).click();
+      await page.locator(MODAL).waitFor({ timeout: 5_000 });
+      const publishBtn = page.locator(MODAL).locator("button.rounded-full", { hasText: /^PUBLISH$/ });
+      if (await publishBtn.isVisible().catch(() => false)) {
+        await publishBtn.click();
+        await page.waitForTimeout(300);
+        publishTabFound = true;
+        break;
+      }
+      // Not owner — close and try next
+      await page.locator(MODAL).getByRole("button", { name: "×" }).click();
+      await page.waitForTimeout(300);
+    }
+
+    if (!publishTabFound) { test.skip(); return; }
+
     const makePublic = makePublicCheckbox(page);
     if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
 
@@ -267,7 +293,7 @@ test.describe("Game Details — Publish tab", () => {
       await page.waitForTimeout(1_500); // auto-saves
     }
 
-    // Close modal and switch to Buy tab
+    // Close modal and verify Buy tab loads without error
     await page.locator(MODAL).getByRole("button", { name: "×" }).click();
     await page.waitForTimeout(300);
     await page.getByRole("button", { name: /^buy$/i }).click();
