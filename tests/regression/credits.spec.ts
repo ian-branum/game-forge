@@ -7,71 +7,61 @@
 import { test, expect } from "../../tests/fixtures";
 
 test.describe("Credits — navigation", () => {
-  test("DB-06 clicking Credits count in header opens Buy Credits screen", async ({
+  test("DB-06 clicking Credits link in header navigates to /credits", async ({
     page,
   }) => {
     await page.goto("/dashboard");
     await page.waitForSelector("text=PLAY", { timeout: 10_000 });
 
-    // Credits button in header — shows current count
-    const creditsBtn = page.getByRole("button", { name: /credits?/i }).first();
-    await expect(creditsBtn).toBeVisible();
-    await creditsBtn.click();
+    // Credits is a <Link href="/credits"> showing "⚡ N credits" — not a button
+    const creditsLink = page.locator('a[href="/credits"]');
+    await expect(creditsLink).toBeVisible();
+    await creditsLink.click();
 
-    // Should navigate to buy-credits page or open a modal
-    const onBuyPage = await page.waitForURL("**/buy-credits", { timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    const modalVisible = await page
-      .locator("[role='dialog'], [data-testid='buy-credits-modal']")
-      .isVisible()
-      .catch(() => false);
-
-    expect(onBuyPage || modalVisible).toBe(true);
+    await page.waitForURL("**/credits", { timeout: 8_000 });
+    await expect(page).toHaveURL(/\/credits/);
   });
 });
 
 test.describe("Buy Credits screen", () => {
   test("BC-01 shows Starter, Standard and Power credit packages", async ({ page }) => {
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=PLAY", { timeout: 10_000 });
-    const creditsBtn = page.getByRole("button", { name: /credits?/i }).first();
-    await creditsBtn.click();
+    await page.goto("/credits");
+    await page.waitForLoadState("networkidle");
 
-    // Wait for screen/modal
-    await page.waitForTimeout(1_000);
-
-    await expect(page.getByText(/starter/i).first()).toBeVisible();
+    await expect(page.getByText(/starter/i).first()).toBeVisible({ timeout: 8_000 });
     await expect(page.getByText(/standard/i).first()).toBeVisible();
     await expect(page.getByText(/power/i).first()).toBeVisible();
   });
 });
 
 test.describe("Forge — insufficient credits", () => {
-  test("FG-03 shows user-friendly error (not raw HTTP 402) when credits are too low", async ({
+  test("FG-03 /api/generate returns 402 with user-friendly JSON when credits are too low", async ({
     request,
   }) => {
-    // Hit the forge API directly to check the response — we don't want to
-    // burn credits, so we use a dummy payload that should fail on credit check
-    const res = await request.post("/api/forge", {
+    // The forge endpoint is /api/generate (not /api/forge).
+    // We POST a valid-looking payload — if the account has enough credits this
+    // will kick off a real generation, so we use an intentionally bad engine
+    // value to trigger a 400 before credit deduction, OR rely on a low-credit
+    // account to hit the 402 path.
+    const res = await request.post("/api/generate", {
       data: {
         engine: "tactical",
         description: "A test game that should fail due to insufficient credits",
       },
     });
 
-    // If 402, the body must be a JSON error object with a user-readable message,
-    // NOT a raw "402 Payment Required" HTTP string
     if (res.status() === 402) {
+      // Must return a JSON object with a human-readable error field — not raw HTTP text
       const body = await res.json().catch(() => null);
       expect(body).not.toBeNull();
-      expect(typeof body?.error === "string" || typeof body?.message === "string").toBe(true);
-      // Must NOT expose raw HTTP status code text to the user
-      const bodyText = JSON.stringify(body).toLowerCase();
-      expect(bodyText).not.toMatch(/payment required/);
+      expect(typeof body?.error).toBe("string");
+      expect(body.error).toMatch(/insufficient credits/i);
+      // Confirm it includes the credit amounts for debugging
+      expect(body).toHaveProperty("needed");
+      expect(body).toHaveProperty("have");
     } else {
-      // Either succeeded (account has credits) or another status — acceptable
-      expect([200, 201, 400, 401, 403, 500]).toContain(res.status());
+      // Account has credits (200/201) or payload was invalid (400/401/403) — all acceptable
+      expect([200, 201, 400, 401, 403]).toContain(res.status());
     }
   });
 });
