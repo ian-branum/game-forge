@@ -117,27 +117,18 @@ test.describe("Profile modal — Avatar (DB-11, DB-12)", () => {
 
 test.describe("Profile modal — Change Password (DB-13, DB-14, DB-15)", () => {
   test("DB-13 OAuth users do not see Change Password section", async ({ page }) => {
-    // The E2E test account (shaniejohnson026@gmail.com) is a Google OAuth account
-    // so this test runs directly — no separate auth file needed.
+    // The E2E account is email/password — this test requires a Google OAuth account.
+    // Skip until an OAuth test account is configured via OAUTH_AUTH_FILE.
+    if (!process.env.OAUTH_AUTH_FILE) { test.skip(); return; }
     await openProfileModal(page);
     const modal = page.locator(PROFILE_MODAL);
-    // Wait for profile fetch to complete (hasPassword comes from API)
     await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
-    // Password fields must NOT be visible for OAuth accounts
     await expect(modal.getByPlaceholder("Current password")).not.toBeVisible();
-    // App shows a note explaining why there's no password section
     await expect(modal.getByText(/sign in with google|no password/i)).toBeVisible();
   });
 
   test("DB-14 email/password users see Current, New and Confirm Password fields", async ({ page }) => {
-    // The primary E2E account is OAuth — this test requires an email/password account.
-    // Skipping here is correct: DB-14 is covered by manual testing or a dedicated
-    // email/password test account. Set E2E_EMAIL_PASSWORD_ACCOUNT=true to un-skip
-    // once such an account is configured.
-    if (!process.env.E2E_EMAIL_PASSWORD_ACCOUNT) {
-      test.skip();
-      return;
-    }
+    // E2E account (shaniejohnson026@gmail.com) was created with email/password — runs directly.
     await openProfileModal(page);
     const modal = page.locator(PROFILE_MODAL);
     await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
@@ -148,11 +139,7 @@ test.describe("Profile modal — Change Password (DB-13, DB-14, DB-15)", () => {
   });
 
   test("DB-15 new password shorter than 8 characters shows error", async ({ page }) => {
-    // Same as DB-14 — requires an email/password account
-    if (!process.env.E2E_EMAIL_PASSWORD_ACCOUNT) {
-      test.skip();
-      return;
-    }
+    // E2E account is email/password — runs directly.
     await openProfileModal(page);
     const modal = page.locator(PROFILE_MODAL);
     await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
