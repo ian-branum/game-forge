@@ -6,6 +6,11 @@
 
 import { test, expect } from "../../tests/fixtures";
 
+// Force anonymous session — landing page tests must run as a signed-out user.
+// Without this, the chromium project's global storageState would keep us logged
+// in and the app would redirect to /dashboard instead of showing the landing page.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe("Landing page", () => {
   test.beforeEach(async ({ landing }) => {
     await landing.goto();
