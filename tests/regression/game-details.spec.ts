@@ -145,17 +145,19 @@ test.describe("Game Details — Modify tab", () => {
     await expect(setActiveBtn).toBeVisible();
   });
 
-  test("MD-03 CODE MODIFY and REGENERATE toggle buttons exist", async ({ page }) => {
+  test("MD-03 CODE MODIFY and REGENERATE mode toggle buttons exist", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    await expect(page.getByRole("button", { name: "CODE MODIFY" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "REGENERATE" })).toBeVisible();
+    // Mode toggles are flex-1 rounded-lg — distinguishes them from the submit button (px-5 rounded-lg)
+    const toggles = page.locator(MODAL).locator("button.flex-1.rounded-lg");
+    await expect(toggles.filter({ hasText: "CODE MODIFY" })).toBeVisible();
+    await expect(toggles.filter({ hasText: "REGENERATE" })).toBeVisible();
   });
 
-  test("MD-04 CODE MODIFY prompt textarea is present", async ({ page }) => {
+  test("MD-04 selecting CODE MODIFY mode shows prompt textarea", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    await page.getByRole("button", { name: "CODE MODIFY" }).click();
+    await page.locator(MODAL).locator("button.flex-1.rounded-lg").filter({ hasText: "CODE MODIFY" }).click();
     await expect(page.getByRole("textbox").first()).toBeVisible();
   });
 

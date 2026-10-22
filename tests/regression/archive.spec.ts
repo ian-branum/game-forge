@@ -114,12 +114,13 @@ test.describe("Archive view — Game Details modal", () => {
     await expect(page.getByText(/copied/i)).toBeVisible({ timeout: 4_000 });
   });
 
-  test("AR-12 modal body shows game name, description, MODIFY and PUBLISH buttons", async ({ page }) => {
+  test("AR-12 modal body shows MODIFY and PUBLISH tab buttons", async ({ page }) => {
     const opened = await openFirstGame(page, "archived");
     if (!opened) { test.skip(); return; }
     const modal = page.locator(MODAL);
-    await expect(modal.getByRole("button", { name: "MODIFY" })).toBeVisible();
-    await expect(modal.getByRole("button", { name: "PUBLISH" })).toBeVisible();
+    // Tab buttons are rounded-full — distinguishes them from CODE MODIFY / REGENERATE action buttons
+    await expect(modal.locator("button.rounded-full", { hasText: /^MODIFY$/ })).toBeVisible();
+    await expect(modal.locator("button.rounded-full", { hasText: /^PUBLISH$/ })).toBeVisible();
   });
 });
 
@@ -151,17 +152,20 @@ test.describe("Archive view — Modify tab", () => {
     await expect(setActiveBtn).toBeVisible();
   });
 
-  test("AR-15 CODE MODIFY and REGENERATE toggle buttons exist", async ({ page }) => {
+  test("AR-15 CODE MODIFY and REGENERATE mode toggle buttons exist", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    await expect(page.getByRole("button", { name: "CODE MODIFY" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "REGENERATE" })).toBeVisible();
+    // Mode toggles are flex-1 rounded-lg — distinguishes them from the submit button (px-5 rounded-lg)
+    const toggles = page.locator(MODAL).locator("button.flex-1.rounded-lg");
+    await expect(toggles.filter({ hasText: "CODE MODIFY" })).toBeVisible();
+    await expect(toggles.filter({ hasText: "REGENERATE" })).toBeVisible();
   });
 
-  test("AR-16 CODE MODIFY prompt textarea is present", async ({ page }) => {
+  test("AR-16 selecting CODE MODIFY mode shows prompt textarea", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    await page.getByRole("button", { name: "CODE MODIFY" }).click();
+    // Click the mode toggle (flex-1), not the submit button
+    await page.locator(MODAL).locator("button.flex-1.rounded-lg").filter({ hasText: "CODE MODIFY" }).click();
     await expect(page.getByRole("textbox").first()).toBeVisible();
   });
 
