@@ -95,7 +95,9 @@ export default function ForgePage() {
             setStatusMessage(payload.message);
           } else if (eventLine === "done") {
             if (payload.id) {
-              router.push(`/play/${payload.id}`);
+              // Tactical games land in the scenario editor so the player can
+              // inspect/tweak the map before playing; everything else plays.
+              router.push(category === "tactical" ? `/editor/${payload.id}` : `/play/${payload.id}`);
             } else {
               setError({ message: payload.error ?? "Unknown error", detail: payload.stack });
               setLoading(false);
