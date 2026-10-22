@@ -52,13 +52,12 @@ export function NATOMG({ fill, stroke, opacity = 1 }: NATOProps) {
   );
 }
 
+/** Mortar — plain frame with a single filled dot (NATO APP-6). */
 export function NATOMortar({ fill, stroke, opacity = 1 }: NATOProps) {
   return (
     <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <text x="18" y="20" textAnchor="middle" fontSize="7" fill={stroke} fontWeight="bold" fontFamily="monospace">MTR</text>
+      <rect x="1" y="5" width="34" height="16" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
+      <circle cx="18" cy="13" r="4" fill={stroke} />
     </g>
   );
 }
