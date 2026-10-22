@@ -16,7 +16,7 @@ test.describe("Forge a Game — page structure", () => {
     // Games & Puzzles and WW2 Tactical selectable; Adventure coming soon
     await expect(page.getByText(/games & puzzles/i)).toBeVisible();
     await expect(page.getByText(/ww2 tactical/i)).toBeVisible();
-    await expect(page.getByText(/adventure/i)).toBeVisible();
+    await expect(page.getByText(/adventure/i).first()).toBeVisible();
   });
 
   test("FG-04 credit count is visible on the Forge page", async ({ page }) => {
