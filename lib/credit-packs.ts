@@ -1,4 +1,6 @@
 // Shared credit pack definitions — safe to import on client or server
+// Price IDs are injected via env vars so test/live keys work across environments:
+//   STRIPE_PRICE_STARTER, STRIPE_PRICE_STANDARD, STRIPE_PRICE_POWER
 export const CREDIT_PACKS = [
   {
     id: "starter",
@@ -6,7 +8,7 @@ export const CREDIT_PACKS = [
     desc: "Try it out",
     credits: 10,
     price: 400,      // cents — for display only
-    priceId: "price_1UT0o1BKdEs0OlCtr0VoVfhK",
+    priceId: process.env.STRIPE_PRICE_STARTER ?? "price_1UT0o1BKdEs0OlCtr0VoVfhK",
     highlight: false,
   },
   {
@@ -15,7 +17,7 @@ export const CREDIT_PACKS = [
     desc: "Most popular",
     credits: 50,
     price: 1500,     // cents — for display only
-    priceId: "price_1UT0oUBKdEs0OlCtk9wHyudZ",
+    priceId: process.env.STRIPE_PRICE_STANDARD ?? "price_1UT0oUBKdEs0OlCtk9wHyudZ",
     highlight: true,
   },
   {
@@ -24,7 +26,7 @@ export const CREDIT_PACKS = [
     desc: "For serious commanders",
     credits: 200,
     price: 5000,     // cents — for display only
-    priceId: "price_1UT0orBKdEs0OlCtTGczNheX",
+    priceId: process.env.STRIPE_PRICE_POWER ?? "price_1UT0orBKdEs0OlCtTGczNheX",
     highlight: false,
   },
 ] as const;
