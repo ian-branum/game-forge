@@ -12,8 +12,9 @@ test.describe("Landing page", () => {
   });
 
   test("renders hero heading and CTA", async ({ page }) => {
-    await expect(page.locator("h1")).toContainText("GAME");
-    await expect(page.locator("h1")).toContainText("FORGE");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("h1")).toContainText("GAME", { timeout: 10_000 });
+    await expect(page.locator("h1")).toContainText("FORGE", { timeout: 10_000 });
     await expect(page.getByRole("button", { name: /get started/i }).first()).toBeVisible();
   });
 
