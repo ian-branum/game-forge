@@ -43,7 +43,7 @@ test.describe("Forge a Game — header nav", () => {
   test("DB-05 Forge button in header navigates to /forge", async ({ page }) => {
     await page.goto("/dashboard");
     await page.waitForSelector("text=PLAY", { timeout: 10_000 });
-    await page.getByRole("button", { name: /^forge$/i }).click();
+    await page.getByRole("link", { name: /forge/i }).click();
     await page.waitForURL("**/forge", { timeout: 8_000 });
     await expect(page).toHaveURL(/\/forge/);
   });
