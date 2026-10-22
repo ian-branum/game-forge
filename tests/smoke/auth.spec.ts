@@ -19,7 +19,7 @@ test.describe("Auth — unauthenticated access", () => {
     // Dashboard uses client-side router.replace("/") once NextAuth resolves
     // the session as unauthenticated. Wait for the LOADING... state to clear
     // and the URL to settle on /  (not /login).
-    await page.waitForURL(/^\/$/, { timeout: 30_000 });
+    await page.waitForURL(/^https?:\/\/[^/]+\/?$/, { timeout: 30_000 });
     await expect(page).toHaveURL(/^https?:\/\/[^/]+\/?$/);
   });
 
