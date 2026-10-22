@@ -127,8 +127,11 @@ function ModifyModal({
   onModified: (updated: ScenarioSummary) => void;
   onArchived: (id: string) => void;
 }) {
+  const router = useRouter();
   const meta = CATEGORY_META[scenario.category] ?? CATEGORY_META.sandbox;
   const isOwner = scenario.userId === currentUserId;
+  // Tactical games have a scenario editor, so AI modification is optional.
+  const isTactical = scenario.category === "tactical";
   const costs = MODIFY_COSTS[scenario.category] ?? MODIFY_COSTS.sandbox;
 
   const [modalTab, setModalTab] = useState<ModalTab>("modify");
@@ -256,8 +259,8 @@ function ModifyModal({
   };
 
   // Code Modify: existing code + new instruction
-  const handleCodeModify = async () => {
-    if (!modifyPrompt.trim()) return;
+  const handleCodeModify = async (): Promise<boolean> => {
+    if (!modifyPrompt.trim()) return false;
     setWorking(true);
     setModifyError("");
     try {
@@ -267,8 +270,8 @@ function ModifyModal({
         body: JSON.stringify({ modificationPrompt: modifyPrompt }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 402) { setModifyError("Not enough credits"); return; }
-      if (!res.ok) { setModifyError(data.error ?? "Modify failed"); return; }
+      if (res.status === 402) { setModifyError("Not enough credits"); return false; }
+      if (!res.ok) { setModifyError(data.error ?? "Modify failed"); return false; }
       const newVersion = data.version as GameVersion | undefined;
       if (newVersion) {
         setModifyPrompt("");
@@ -283,12 +286,27 @@ function ModifyModal({
         onModified({ ...scenario, title: updatedTitle, description: updatedDesc, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
         window.dispatchEvent(new Event("gf:credits"));
         flashModifySuccess();
+        return true;
       }
+      return false;
     } catch {
       setModifyError("Something went wrong. Please try again.");
+      return false;
     } finally {
       setWorking(false);
     }
+  };
+
+  // Apply AI changes, then hand over to the tactical scenario editor.
+  const handleApplyAndEdit = async () => {
+    const ok = await handleCodeModify();
+    if (ok) router.push(`/editor/${scenario.id}`);
+  };
+
+  // Skip AI entirely — go straight to the editor with the current scenario.
+  const handleEditManually = () => {
+    onClose();
+    router.push(`/editor/${scenario.id}`);
   };
 
   // Regenerate: prompts only → fresh code
@@ -637,7 +655,9 @@ function ModifyModal({
                     disabled={modifyMode === "regenerate"}
                     placeholder={modifyMode === "regenerate"
                       ? "No prompt needed — regenerates from existing prompts…"
-                      : "Describe what to change about this game…"}
+                      : isTactical
+                        ? "Optional: describe changes for AI to apply first..."
+                        : "Describe what to change about this game…"}
                     className="w-full resize-y mb-2"
                     style={{
                       ...inputStyle,
@@ -668,17 +688,36 @@ function ModifyModal({
                         🔧 FIX IT — FREE
                       </button>
                     )}
-                    <button
-                      onClick={modifyMode === "codeModify" ? handleCodeModify : handleRegenerate}
-                      disabled={working || (modifyMode === "codeModify" && !modifyPrompt.trim())}
-                      className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
-                      {working
-                        ? "FORGING…"
-                        : modifyMode === "codeModify"
-                          ? `CODE MODIFY`
-                          : `REGENERATE`}
-                    </button>
+                    {isTactical && modifyMode === "codeModify" ? (
+                      <>
+                        <button
+                          onClick={handleEditManually}
+                          disabled={working}
+                          className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: "transparent", border: "1px solid #1e2a4a", color: "#94a3b8" }}>
+                          EDIT MANUALLY
+                        </button>
+                        <button
+                          onClick={handleApplyAndEdit}
+                          disabled={working || !modifyPrompt.trim()}
+                          className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
+                          {working ? "FORGING…" : "APPLY & EDIT"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={modifyMode === "codeModify" ? handleCodeModify : handleRegenerate}
+                        disabled={working || (modifyMode === "codeModify" && !modifyPrompt.trim())}
+                        className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
+                        {working
+                          ? "FORGING…"
+                          : modifyMode === "codeModify"
+                            ? `CODE MODIFY`
+                            : `REGENERATE`}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

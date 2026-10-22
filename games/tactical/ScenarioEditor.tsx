@@ -132,11 +132,35 @@ function newUnitId(faction: Faction, type: UnitType) {
 }
 
 // ─── Small UI helpers ────────────────────────────────────────────────────────
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({
+  children,
+  action,
+}: {
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="font-orbitron text-[10px] tracking-[0.2em] text-gray-500 mt-4 mb-2 first:mt-0">
-      {children}
+    <div className="flex items-center gap-2 mt-4 mb-2 first:mt-0">
+      <span className="font-orbitron text-[10px] tracking-[0.2em] text-gray-500 whitespace-nowrap">
+        {children}
+      </span>
+      <span className="flex-1 h-px bg-gray-800" />
+      {action}
     </div>
+  );
+}
+
+/** Muted, link-style destructive action shown inline with a section title. */
+function ClearAllButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="font-orbitron text-[10px] tracking-wider text-red-600 hover:text-red-400 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-red-600 whitespace-nowrap"
+    >
+      [clear all]
+    </button>
   );
 }
 
@@ -171,6 +195,114 @@ function ToolButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Inventory row — click the row to select, click the name to rename inline. */
+function UnitRow({
+  unit,
+  selected,
+  onSelect,
+  onRename,
+}: {
+  unit: EditorUnit;
+  selected: boolean;
+  onSelect: () => void;
+  onRename: (name: string) => void;
+}) {
+  const [editingName, setEditingName] = useState(false);
+  const [draft, setDraft] = useState(unit.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editingName) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editingName]);
+
+  const startEditing = () => {
+    setDraft(unit.name);
+    setEditingName(true);
+  };
+
+  const commitName = () => {
+    const next = draft.trim();
+    if (next && next !== unit.name) onRename(next);
+    setDraft(next || unit.name);
+    setEditingName(false);
+  };
+
+  const cancelEditing = () => {
+    setDraft(unit.name);
+    setEditingName(false);
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={e => {
+        // Let the rename input handle its own keys.
+        if ((e.target as HTMLElement).tagName === "INPUT") return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition cursor-pointer ${
+        selected
+          ? "bg-indigo-900/40 text-white"
+          : "text-gray-400 hover:text-white hover:bg-gray-800/60"
+      }`}
+    >
+      <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
+        <NATOSymbol
+          unit={unit}
+          fill={EDITOR_FACTION_FILL[unit.faction]}
+          stroke={EDITOR_FACTION_STROKE[unit.faction]}
+        />
+      </svg>
+
+      {editingName ? (
+        <input
+          ref={inputRef}
+          value={draft}
+          maxLength={40}
+          onChange={e => setDraft(e.target.value)}
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+          onBlur={commitName}
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+              commitName();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelEditing();
+            }
+          }}
+          className="flex-1 min-w-0 bg-transparent border-b border-gray-600 focus:border-indigo-400 outline-none text-white text-sm"
+        />
+      ) : (
+        <span
+          className="truncate flex-1 min-w-0"
+          title="Click to rename"
+          onClick={e => {
+            e.stopPropagation();
+            startEditing();
+          }}
+        >
+          {unit.name}
+        </span>
+      )}
+
+      <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">
+        {unit.pos.row},{unit.pos.col}
+      </span>
+    </div>
   );
 }
 
@@ -298,6 +430,41 @@ export default function ScenarioEditor({
     commit(draft => {
       const target = draft.units.find(u => u.id === unitId);
       if (target) target.pos = { row, col };
+    });
+  };
+
+  // ── Clear all (one undoable step each) ────────────────────────────────────
+  const clearTerrain = () => {
+    commit(draft => {
+      draft.map.forEach(rowTiles => rowTiles.forEach(tile => { tile.terrain = "open"; }));
+    });
+    setSelectedUnitId(null);
+  };
+
+  const clearFactionUnits = (faction: Faction) => {
+    commit(draft => {
+      draft.units = draft.units.filter(u => u.faction !== faction);
+    });
+    setSelectedUnitId(null);
+    setStackPicker(null);
+  };
+
+  const clearObjectives = () => {
+    commit(draft => {
+      draft.objectives = [];
+      draft.map.forEach(rowTiles =>
+        rowTiles.forEach(tile => {
+          tile.objective = false;
+          tile.objectiveHeldBy = null;
+        })
+      );
+    });
+  };
+
+  const renameUnit = (unitId: string, name: string) => {
+    commit(draft => {
+      const target = draft.units.find(u => u.id === unitId);
+      if (target) target.name = name;
     });
   };
 
@@ -494,17 +661,14 @@ export default function ScenarioEditor({
   const stackUnits = stackPicker ? unitsAt(stackPicker.row, stackPicker.col) : [];
 
   return (
-    <div
-      className="flex flex-col"
-      style={{ height: "calc(100vh - 56px)", background: "#05071a" }}
-    >
-      <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-col" style={{ background: "#05071a" }}>
+      <div className="flex items-stretch">
         {/* ── LEFT: palette ────────────────────────────────────────────── */}
-        <aside
-          className="w-52 flex-shrink-0 overflow-y-auto relative bg-gray-900/60 border-r border-gray-800 p-3"
-        >
+        <aside className="w-52 flex-shrink-0 bg-gray-900/60 border-r border-gray-800 p-3">
           <div className={editing ? "" : "pointer-events-none opacity-40"}>
-            <SectionTitle>TERRAIN</SectionTitle>
+            <SectionTitle action={<ClearAllButton onClick={clearTerrain} />}>
+              TERRAIN
+            </SectionTitle>
             {TERRAIN_TOOLS.map(t => (
               <ToolButton
                 key={t.terrain}
@@ -527,7 +691,16 @@ export default function ScenarioEditor({
               Eraser
             </ToolButton>
 
-            <SectionTitle>ALLIED</SectionTitle>
+            <SectionTitle
+              action={
+                <ClearAllButton
+                  onClick={() => clearFactionUnits("allied")}
+                  disabled={alliedUnits.length === 0}
+                />
+              }
+            >
+              ALLIED
+            </SectionTitle>
             {UNIT_PALETTE.filter(u => u.faction === "allied").map(u => (
               <ToolButton
                 key={`allied-${u.type}`}
@@ -558,7 +731,16 @@ export default function ScenarioEditor({
               Eraser
             </ToolButton>
 
-            <SectionTitle>AXIS</SectionTitle>
+            <SectionTitle
+              action={
+                <ClearAllButton
+                  onClick={() => clearFactionUnits("axis")}
+                  disabled={axisUnits.length === 0}
+                />
+              }
+            >
+              AXIS
+            </SectionTitle>
             {UNIT_PALETTE.filter(u => u.faction === "axis").map(u => (
               <ToolButton
                 key={`axis-${u.type}`}
@@ -589,7 +771,16 @@ export default function ScenarioEditor({
               Eraser
             </ToolButton>
 
-            <SectionTitle>OBJECTIVES</SectionTitle>
+            <SectionTitle
+              action={
+                <ClearAllButton
+                  onClick={clearObjectives}
+                  disabled={scenario.objectives.length === 0}
+                />
+              }
+            >
+              OBJECTIVES
+            </SectionTitle>
             <ToolButton
               active={selectedTool?.kind === "objective"}
               onClick={() => selectTool({ kind: "objective" })}
@@ -606,21 +797,10 @@ export default function ScenarioEditor({
               Eraser
             </ToolButton>
           </div>
-
-          {!editing && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span
-                className="font-orbitron text-[10px] tracking-widest px-3 py-2 rounded text-center"
-                style={{ background: "#05071ae6", border: "1px solid #1e2a4a", color: "#94a3b8" }}
-              >
-                CLICK EDIT<br />TO MODIFY
-              </span>
-            </div>
-          )}
         </aside>
 
         {/* ── CENTER: hex map ──────────────────────────────────────────── */}
-        <main className="flex-1 overflow-auto relative p-4">
+        <main className="flex-1 min-w-0 flex items-center justify-center overflow-auto relative p-4">
           <div className="flex justify-center">
             <svg
               width={svgW}
@@ -758,34 +938,19 @@ export default function ScenarioEditor({
         </main>
 
         {/* ── RIGHT: inventory ─────────────────────────────────────────── */}
-        <aside className="w-60 flex-shrink-0 overflow-y-auto bg-gray-900/60 border-l border-gray-800 p-3">
+        <aside className="w-60 flex-shrink-0 self-stretch bg-gray-900/60 border-l border-gray-800 p-3">
           <SectionTitle>ALLIED</SectionTitle>
           {alliedUnits.length === 0 && (
             <p className="text-[11px] text-gray-600 px-2">No allied units.</p>
           )}
           {alliedUnits.map(u => (
-            <button
+            <UnitRow
               key={u.id}
-              type="button"
-              onClick={() => selectUnit(u.id)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition ${
-                u.id === selectedUnitId
-                  ? "bg-indigo-900/40 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800/60"
-              }`}
-            >
-              <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
-                <NATOSymbol
-                  unit={u}
-                  fill={EDITOR_FACTION_FILL[u.faction]}
-                  stroke={EDITOR_FACTION_STROKE[u.faction]}
-                />
-              </svg>
-              <span className="truncate">{u.name}</span>
-              <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">
-                {u.pos.row},{u.pos.col}
-              </span>
-            </button>
+              unit={u}
+              selected={u.id === selectedUnitId}
+              onSelect={() => selectUnit(u.id)}
+              onRename={name => renameUnit(u.id, name)}
+            />
           ))}
 
           <SectionTitle>AXIS</SectionTitle>
@@ -793,28 +958,13 @@ export default function ScenarioEditor({
             <p className="text-[11px] text-gray-600 px-2">No axis units.</p>
           )}
           {axisUnits.map(u => (
-            <button
+            <UnitRow
               key={u.id}
-              type="button"
-              onClick={() => selectUnit(u.id)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition ${
-                u.id === selectedUnitId
-                  ? "bg-indigo-900/40 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800/60"
-              }`}
-            >
-              <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
-                <NATOSymbol
-                  unit={u}
-                  fill={EDITOR_FACTION_FILL[u.faction]}
-                  stroke={EDITOR_FACTION_STROKE[u.faction]}
-                />
-              </svg>
-              <span className="truncate">{u.name}</span>
-              <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">
-                {u.pos.row},{u.pos.col}
-              </span>
-            </button>
+              unit={u}
+              selected={u.id === selectedUnitId}
+              onSelect={() => selectUnit(u.id)}
+              onRename={name => renameUnit(u.id, name)}
+            />
           ))}
 
           <SectionTitle>OBJECTIVES</SectionTitle>
