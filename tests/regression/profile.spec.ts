@@ -133,7 +133,7 @@ test.describe("Profile modal — Change Password (DB-13, DB-14, DB-15)", () => {
     const modal = page.locator(PROFILE_MODAL);
     await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
     await expect(modal.getByPlaceholder("Current password")).toBeVisible();
-    await expect(modal.getByPlaceholder(/new password/i)).toBeVisible();
+    await expect(modal.getByPlaceholder("New password (min. 8 characters)")).toBeVisible();
     await expect(modal.getByPlaceholder("Confirm new password")).toBeVisible();
     await expect(modal.getByRole("button", { name: "UPDATE PASSWORD" })).toBeVisible();
   });
@@ -144,7 +144,7 @@ test.describe("Profile modal — Change Password (DB-13, DB-14, DB-15)", () => {
     const modal = page.locator(PROFILE_MODAL);
     await expect(modal.getByRole("button", { name: "SAVE PROFILE" })).toBeEnabled({ timeout: 8_000 });
     await modal.getByPlaceholder("Current password").fill("anything123");
-    await modal.getByPlaceholder(/new password/i).fill("short");
+    await modal.getByPlaceholder("New password (min. 8 characters)").fill("short");
     await modal.getByPlaceholder("Confirm new password").fill("short");
     await modal.getByRole("button", { name: "UPDATE PASSWORD" }).click();
     await expect(modal.getByText(/at least 8 characters/i)).toBeVisible({ timeout: 4_000 });
