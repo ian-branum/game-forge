@@ -58,9 +58,8 @@ const TERRAIN_FILL: Record<string, string> = {
   open:       "#b8a85c",
   road:       "#7a6540",
   woods:      "#2a5218",
-  building:   "#7a5c10",
-  rubble:     "#5a5a5a",
-  wall:       "#8a7a5a",
+  building:   "#3a3a3a",
+  rubble:     "#4a4038",
   wheatfield: "#c89830",
 };
 
@@ -68,9 +67,8 @@ const TERRAIN_STROKE: Record<string, string> = {
   open:       "#9a8a48",
   road:       "#5a4828",
   woods:      "#1a3a0c",
-  building:   "#5a4008",
-  rubble:     "#3a3a3a",
-  wall:       "#6a5a3a",
+  building:   "#242424",
+  rubble:     "#333333",
   wheatfield: "#a07820",
 };
 
@@ -80,17 +78,15 @@ const TERRAIN_LABEL: Record<string, string> = {
   woods:      "Woods",
   building:   "Building",
   rubble:     "Rubble",
-  wall:       "Stone Wall",
   wheatfield: "Wheatfield",
 };
 
 const TERRAIN_EFFECT: Record<string, string> = {
   open:       "No cover. Fast movement (1 MP).",
   road:       "No cover. Very fast movement (0.5 MP).",
-  woods:      "+2 defense. Slow movement (2 MP). Blocks LOS beyond 2 hexes.",
-  building:   "+3 defense. Slow movement (2 MP). Blocks LOS entirely.",
-  rubble:     "+1 defense. Slow movement (2 MP).",
-  wall:       "+1 defense. Normal movement (1 MP). Partial LOS block.",
+  woods:      "+3 defense. Slow movement (2 MP). Blocks LOS beyond 2 hexes.",
+  building:   "+4 defense. Slow movement (2 MP). Blocks LOS entirely.",
+  rubble:     "+2 defense. Slow movement (2 MP).",
   wheatfield: "+1 defense. Normal movement (1 MP). Blocks LOS beyond 3 hexes.",
 };
 
@@ -107,14 +103,6 @@ function TerrainIcon({ terrain, cx, cy }: { terrain: string; cx: number; cy: num
   }
   if (terrain === "building") {
     return <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" opacity={0.6} style={{ userSelect: "none" }}>🏠</text>;
-  }
-  if (terrain === "wall") {
-    return (
-      <>
-        <line x1={cx - 8} y1={cy} x2={cx + 8} y2={cy} stroke="#6a5a3a" strokeWidth="3" strokeLinecap="round" opacity={0.7} />
-        <line x1={cx - 4} y1={cy + 4} x2={cx + 4} y2={cy + 4} stroke="#6a5a3a" strokeWidth="3" strokeLinecap="round" opacity={0.5} />
-      </>
-    );
   }
   if (terrain === "rubble") {
     return <text x={cx} y={cy + 4} textAnchor="middle" fontSize="10" opacity={0.55} style={{ userSelect: "none" }}>💥</text>;
@@ -253,11 +241,13 @@ function RulesModal({ onClose }: { onClose: () => void }) {
           <p><strong style={{ color: "#e2e8f0" }}>To fire:</strong> Select your unit, then click a highlighted enemy target (red border). Combat is resolved automatically.</p>
           <p><strong style={{ color: "#e2e8f0" }}>Fire Resolution:</strong></p>
           <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
-            <li>Roll: <code style={{ color: "#a5b4fc" }}>Random(0–10) + ATK + Leader Bonus</code></li>
+            <li>Roll: <code style={{ color: "#a5b4fc" }}>2D6</code> (2–12, bell curve)</li>
+            <li>Attack: <code style={{ color: "#a5b4fc" }}>ATK + Leader Bonus + Assault Bonus (+2 at 1 hex)</code></li>
             <li>Defense: <code style={{ color: "#a5b4fc" }}>DEF + Terrain Bonus − Suppression Penalty</code></li>
-            <li>Roll &gt; Defense + 4 → <strong style={{ color: "#6b7280" }}>ELIMINATED</strong></li>
-            <li>Roll &gt; Defense + 2 → <strong style={{ color: "#ef4444" }}>BROKEN</strong></li>
-            <li>Roll &gt; Defense → <strong style={{ color: "#f59e0b" }}>SUPPRESSED</strong></li>
+            <li>Net = Roll + Attack − Defense</li>
+            <li>Net ≥ 8 → <strong style={{ color: "#6b7280" }}>ELIMINATED</strong></li>
+            <li>Net ≥ 5 → <strong style={{ color: "#ef4444" }}>BROKEN</strong></li>
+            <li>Net ≥ 2 → <strong style={{ color: "#f59e0b" }}>SUPPRESSED</strong></li>
             <li>Otherwise → <strong style={{ color: "#94a3b8" }}>MISS</strong></li>
           </ul>
           <p>A unit that has fired is marked SPENT for the remainder of the phase.</p>
@@ -269,7 +259,6 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <li><strong style={{ color: "#e2e8f0" }}>Buildings</strong> block LOS entirely.</li>
             <li><strong style={{ color: "#e2e8f0" }}>Woods</strong> block LOS beyond 2 hexes.</li>
             <li><strong style={{ color: "#e2e8f0" }}>Wheatfields</strong> block LOS beyond 3 hexes.</li>
-            <li><strong style={{ color: "#e2e8f0" }}>Walls</strong> provide partial cover but do not block LOS.</li>
             <li>Open ground and roads do not block LOS.</li>
           </ul>
         </RulesSection>
@@ -282,12 +271,13 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <li><strong style={{ color: "#ef4444" }}>Broken</strong> — can only flee; must roll to rally</li>
             <li><strong style={{ color: "#6b7280" }}>Eliminated</strong> — removed from play permanently</li>
           </ul>
+          <p><strong style={{ color: "#e2e8f0" }}>Squads vs Teams:</strong> squads (Rifle, Assault) degrade step by step — Suppressed → Broken → Eliminated. Teams (MG, Mortar, Leader, Vehicle) cannot be broken: a BROKEN result eliminates them instead.</p>
           <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>Random(0–10) + Leader Bonus &gt; (10 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
         </RulesSection>
 
         <RulesSection num="7.0" title="LEADERS">
           <p>Leader units (Sergeants, Lieutenants, etc.) provide a <strong style={{ color: "#e2e8f0" }}>+1 combat bonus</strong> and <strong style={{ color: "#e2e8f0" }}>+2 rally bonus</strong> to all friendly units within 2 hexes.</p>
-          <p>Leaders are high-value targets — losing your leader significantly degrades your force's effectiveness. Keep them close to the fighting, but not in the front line.</p>
+          <p>Leaders are high-value targets, but a leader stacked with another friendly unit cannot be singled out — it is protected while it shares a hex. Keep them close to the fighting, but paired with a squad.</p>
         </RulesSection>
 
         <RulesSection num="8.0" title="OBJECTIVES & VICTORY">
@@ -352,7 +342,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
               <div><strong style={{ color: "#e2e8f0" }}>DEF</strong> — Defense value (added to terrain bonus)</div>
               <div><strong style={{ color: "#e2e8f0" }}>MOV</strong> — Movement points per turn</div>
               <div><strong style={{ color: "#e2e8f0" }}>MRL</strong> — Morale (affects rally difficulty)</div>
-              <div><strong style={{ color: "#e2e8f0" }}>Symbol</strong> — Unit type (infantry, MG, mortar, leader)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>Symbol</strong> — Unit type (infantry, assault, MG, mortar, leader)</div>
             </div>
           </div>
         </RulesSection>
@@ -524,8 +514,11 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     if (!gameState) return;
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    // The map scales with its column, so convert client px → viewBox units.
+    const vbWidth = svg.viewBox.baseVal.width || 1;
+    const scale = rect.width / vbWidth;
+    const px = (e.clientX - rect.left) / scale;
+    const py = (e.clientY - rect.top) / scale;
     const rows = gameState.map.length;
     const cols = gameState.map[0]?.length ?? 0;
     const hex = pixelToHex(px, py, rows, cols);
@@ -788,17 +781,19 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Hex map ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-auto p-2" style={{ position: "relative" }}>
+        <div className="flex-1 overflow-auto p-2 flex items-center justify-center">
+          <div style={{ position: "relative", width: "100%", maxWidth: SVG_W * 1.6 }}>
           <canvas
             ref={tracerCanvas}
             width={SVG_W}
             height={SVG_H}
-            style={{ position: "absolute", top: "8px", left: "8px", width: SVG_W, height: SVG_H, pointerEvents: "none", zIndex: 10 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 10 }}
           />
           <svg
-            width={SVG_W}
-            height={SVG_H}
-            style={{ display: "block", cursor: "crosshair" }}
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            width="100%"
+            preserveAspectRatio="xMidYMid meet"
+            style={{ display: "block", height: "auto", cursor: "crosshair" }}
             onMouseMove={handleSVGMouseMove}
             onMouseLeave={handleSVGMouseLeave}
           >
@@ -878,6 +873,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* ── Right panel ─────────────────────────────────────────────── */}

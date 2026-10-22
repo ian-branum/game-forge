@@ -12,7 +12,7 @@ interface AIUnit {
   id: string;
   name: string;
   faction: "allied" | "axis";
-  type: "infantry" | "leader" | "mg" | "mortar" | "vehicle";
+  type: "infantry" | "assault" | "leader" | "mg" | "mortar";
   attack: number;
   defense: number;
   movement: number;
@@ -43,9 +43,13 @@ The map is 12 rows × 16 columns of hexagonal tiles.
 Allied units start in the bottom rows (rows 8-11), Axis units in the top rows (rows 0-5).
 Objectives are typically in the middle rows (rows 4-8).
 
-Terrain types: "open", "road", "woods", "building", "rubble", "wall", "wheatfield"
-Unit types: "infantry", "leader", "mg", "mortar", "vehicle"
+Terrain types: "open", "road", "woods", "building", "rubble", "wheatfield"
+("wall" is NOT a valid terrain type — use "rubble" instead.)
+Unit types: "infantry", "assault", "mg", "mortar", "leader" (no vehicle)
 Factions: "allied" or "axis"
+
+Cover: wheatfield +1 defense, rubble +2, woods +3, building +4, open/road 0.
+Mortar teams fire directly and need line of sight — there is no indirect fire.
 
 Output ONLY valid JSON, no markdown, no explanation. Schema:
 {
@@ -69,12 +73,18 @@ Output ONLY valid JSON, no markdown, no explanation. Schema:
   "axisWinCondition": string
 }
 
+Unit stats — use these exact base values (attack / defense / range / movement / morale):
+- infantry ("Rifle Squad"):  4 / 8 / 4 / 4 / 7
+- assault  ("Assault Squad"): 6 / 8 / 2 / 5 / 7
+- mg       ("MG Team"):      7 / 5 / 6 / 2 / 7
+- mortar   ("Mortar Team"):  5 / 6 / 8 / 2 / 6
+- leader   ("Leader"):       1 / 8 / 2 / 5 / 9
+
 Balance guidelines:
 - 3-5 allied units, 3-5 axis units
-- Always include 1 leader per side (morale 9, higher movement)
-- Allied attack ratings 3-5, axis defense ratings 2-4
-- MG teams: attack 6-7, range 6-7, movement 2-3
-- Infantry: attack 3-5, defense 2-3, movement 4, range 4
+- Always include 1 leader per side
+- Keep at least one squad (infantry or assault) per side — teams cannot absorb casualties
+- Assault squads are short-ranged (2) but hit hardest up close
 - Morale 6-9 (veterans higher)
 - 2-4 objectives, alliedObjectivesNeeded = ceil(objectives/2)`;
 

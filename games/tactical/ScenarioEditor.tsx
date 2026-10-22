@@ -36,9 +36,8 @@ const TERRAIN_FILL: Record<TerrainType, string> = {
   open: "#b8a85c",
   road: "#7a6540",
   woods: "#2a5218",
-  building: "#7a5c10",
-  rubble: "#5a5a5a",
-  wall: "#8a7a5a",
+  building: "#3a3a3a",
+  rubble: "#4a4038",
   wheatfield: "#c89830",
 };
 
@@ -46,20 +45,18 @@ const TERRAIN_STROKE: Record<TerrainType, string> = {
   open: "#9a8a48",
   road: "#5a4828",
   woods: "#1a3a0c",
-  building: "#5a4008",
-  rubble: "#3a3a3a",
-  wall: "#6a5a3a",
+  building: "#242424",
+  rubble: "#333333",
   wheatfield: "#a07820",
 };
 
-const TERRAIN_TOOLS: { terrain: TerrainType; label: string; emoji: string }[] = [
-  { terrain: "open", label: "Open", emoji: "🟫" },
-  { terrain: "woods", label: "Woods", emoji: "🟩" },
-  { terrain: "building", label: "Building", emoji: "🏚" },
-  { terrain: "wheatfield", label: "Wheatfield", emoji: "🟨" },
-  { terrain: "road", label: "Road", emoji: "🛣" },
-  { terrain: "rubble", label: "Rubble", emoji: "🪨" },
-  { terrain: "wall", label: "Wall", emoji: "🧱" },
+const TERRAIN_TOOLS: { terrain: TerrainType; label: string }[] = [
+  { terrain: "open", label: "Open" },
+  { terrain: "road", label: "Road" },
+  { terrain: "woods", label: "Woods" },
+  { terrain: "building", label: "Building" },
+  { terrain: "rubble", label: "Rubble" },
+  { terrain: "wheatfield", label: "Wheatfield" },
 ];
 
 // ─── Unit templates (used for freshly placed units) ──────────────────────────
@@ -73,19 +70,22 @@ type UnitTemplate = {
 };
 
 // Generic, faction-neutral names — the symbol already conveys the faction.
+// Stats follow the canonical roster in the combat overhaul spec.
 const UNIT_TEMPLATES: Record<Faction, Record<UnitType, UnitTemplate>> = {
   allied: {
-    infantry: { name: "Rifle Squad", attack: 4, defense: 3, movement: 4, range: 3, morale: 7 },
-    leader: { name: "Sergeant", attack: 2, defense: 2, movement: 5, range: 2, morale: 9 },
-    mg: { name: "MG Team", attack: 6, defense: 2, movement: 3, range: 5, morale: 7 },
-    mortar: { name: "Mortar Team", attack: 5, defense: 2, movement: 2, range: 6, morale: 6 },
+    infantry: { name: "Rifle Squad", attack: 4, defense: 8, movement: 4, range: 4, morale: 7 },
+    assault: { name: "Assault Squad", attack: 6, defense: 8, movement: 5, range: 2, morale: 7 },
+    mg: { name: "MG Team", attack: 7, defense: 5, movement: 2, range: 6, morale: 7 },
+    mortar: { name: "Mortar Team", attack: 5, defense: 6, movement: 2, range: 8, morale: 6 },
+    leader: { name: "Leader", attack: 1, defense: 8, movement: 5, range: 2, morale: 9 },
     vehicle: { name: "Tank", attack: 8, defense: 6, movement: 5, range: 5, morale: 9 },
   },
   axis: {
-    infantry: { name: "Rifle Squad", attack: 4, defense: 3, movement: 4, range: 3, morale: 7 },
-    leader: { name: "Sergeant", attack: 2, defense: 2, movement: 5, range: 2, morale: 9 },
-    mg: { name: "MG Team", attack: 7, defense: 2, movement: 2, range: 6, morale: 7 },
-    mortar: { name: "Mortar Team", attack: 5, defense: 2, movement: 2, range: 6, morale: 6 },
+    infantry: { name: "Rifle Squad", attack: 4, defense: 8, movement: 4, range: 4, morale: 7 },
+    assault: { name: "Assault Squad", attack: 6, defense: 8, movement: 5, range: 2, morale: 7 },
+    mg: { name: "MG Team", attack: 7, defense: 5, movement: 2, range: 6, morale: 7 },
+    mortar: { name: "Mortar Team", attack: 5, defense: 6, movement: 2, range: 8, morale: 6 },
+    leader: { name: "Leader", attack: 1, defense: 8, movement: 5, range: 2, morale: 9 },
     vehicle: { name: "Tank", attack: 8, defense: 7, movement: 5, range: 5, morale: 9 },
   },
 };
@@ -94,34 +94,33 @@ const UNIT_TEMPLATES: Record<Faction, Record<UnitType, UnitTemplate>> = {
 // in the engine), so newly placed editor units carry one — it just isn't drawn.
 const EMOJI_FOR_TYPE: Record<UnitType, string> = {
   infantry: "🪖",
+  assault: "⚔",
   leader: "⭐",
   mg: "🔫",
   mortar: "💣",
   vehicle: "🛡",
 };
 
+// Palette order matches the spec: infantry, assault, mg, mortar, leader.
 const UNIT_PALETTE: { faction: Faction; type: UnitType; label: string }[] = [
   { faction: "allied", type: "infantry", label: "Rifle Squad" },
-  { faction: "allied", type: "leader", label: "Leader" },
+  { faction: "allied", type: "assault", label: "Assault Squad" },
   { faction: "allied", type: "mg", label: "MG Team" },
-  { faction: "allied", type: "mortar", label: "Mortar" },
-  { faction: "allied", type: "vehicle", label: "Tank" },
+  { faction: "allied", type: "mortar", label: "Mortar Team" },
+  { faction: "allied", type: "leader", label: "Leader" },
   { faction: "axis", type: "infantry", label: "Rifle Squad" },
-  { faction: "axis", type: "leader", label: "Leader" },
+  { faction: "axis", type: "assault", label: "Assault Squad" },
   { faction: "axis", type: "mg", label: "MG Team" },
-  { faction: "axis", type: "mortar", label: "Mortar" },
-  { faction: "axis", type: "vehicle", label: "Tank" },
+  { faction: "axis", type: "mortar", label: "Mortar Team" },
+  { faction: "axis", type: "leader", label: "Leader" },
 ];
 
 const FACTION_COLOR: Record<Faction, string> = { allied: "#6080c0", axis: "#b08040" };
 
 type SelectedTool =
   | { kind: "terrain"; terrain: TerrainType }
-  | { kind: "terrain-eraser" }
   | { kind: "unit"; faction: Faction; unitType: UnitType }
-  | { kind: "unit-eraser" }
-  | { kind: "objective" }
-  | { kind: "objective-eraser" };
+  | { kind: "objective" };
 
 type EditorUnit = ScenarioDefinition["units"][number];
 
@@ -344,6 +343,8 @@ export default function ScenarioEditor({
   const draggingRef = useRef(false);
   const touchRef = useRef(false);
   const strokeActiveRef = useRef(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
 
   // Inputs mirror the document, so undo/redo updates them too.
   useEffect(() => {
@@ -497,25 +498,27 @@ export default function ScenarioEditor({
     }
   };
 
-  /** Painterly tools: terrain and erasers (support drag). */
-  const isPaintTool = (tool: SelectedTool | null) =>
-    !!tool &&
-    (tool.kind === "terrain" ||
-      tool.kind === "terrain-eraser" ||
-      tool.kind === "unit-eraser" ||
-      tool.kind === "objective-eraser");
+  /** Terrain is the only painterly tool (supports drag). */
+  const isPaintTool = (tool: SelectedTool | null) => !!tool && tool.kind === "terrain";
 
   const applyPaint = (row: number, col: number) => {
     const tool = selectedTool;
-    if (!tool) return;
-    if (tool.kind === "terrain") {
-      paint(draft => setTerrainIn(draft, row, col, tool.terrain));
-    } else if (tool.kind === "terrain-eraser") {
-      paint(draft => setTerrainIn(draft, row, col, "open"));
-    } else if (tool.kind === "unit-eraser") {
-      paint(draft => removeUnitsIn(draft, row, col));
-    } else if (tool.kind === "objective-eraser") {
-      paint(draft => removeObjectivesIn(draft, row, col));
+    if (!tool || tool.kind !== "terrain") return;
+    paint(draft => setTerrainIn(draft, row, col, tool.terrain));
+  };
+
+  /**
+   * Right-click / tap-and-hold removal: clears the units on a hex, or the
+   * objective marker if the hex holds no units.
+   */
+  const removeAt = (row: number, col: number) => {
+    if (!editing) return;
+    if (unitsAt(row, col).length > 0) {
+      commit(draft => removeUnitsIn(draft, row, col));
+      setSelectedUnitId(null);
+      setStackPicker(null);
+    } else if (objectiveAt(row, col)) {
+      commit(draft => removeObjectivesIn(draft, row, col));
     }
   };
 
@@ -544,6 +547,15 @@ export default function ScenarioEditor({
     }
 
     applyOnce(row, col);
+
+    // Tap-and-hold removes units/objectives (the touch equivalent of right-click).
+    if (touch && editing) {
+      longPressFired.current = false;
+      longPressTimer.current = window.setTimeout(() => {
+        longPressFired.current = true;
+        removeAt(row, col);
+      }, 550);
+    }
   };
 
   const handlePointerEnter = (row: number, col: number) => {
@@ -559,6 +571,10 @@ export default function ScenarioEditor({
     const finish = () => {
       if (draggingRef.current || strokeActiveRef.current) {
         endStroke();
+      }
+      if (longPressTimer.current !== null) {
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
       }
       draggingRef.current = false;
       strokeActiveRef.current = false;
@@ -682,14 +698,6 @@ export default function ScenarioEditor({
                 {t.label}
               </ToolButton>
             ))}
-            <ToolButton
-              active={selectedTool?.kind === "terrain-eraser"}
-              onClick={() => selectTool({ kind: "terrain-eraser" })}
-              danger
-            >
-              <span className="inline-block w-3 h-3 rounded-sm border border-gray-600 flex-shrink-0" />
-              Eraser
-            </ToolButton>
 
             <SectionTitle
               action={
@@ -711,7 +719,7 @@ export default function ScenarioEditor({
                 }
                 onClick={() => selectTool({ kind: "unit", faction: "allied", unitType: u.type })}
               >
-                <svg width={39} height={28} viewBox="0 0 36 26" className="flex-shrink-0">
+                <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
                   <NATOTypeSymbol
                     type={u.type}
                     name={u.label}
@@ -722,14 +730,6 @@ export default function ScenarioEditor({
                 {u.label}
               </ToolButton>
             ))}
-            <ToolButton
-              active={selectedTool?.kind === "unit-eraser"}
-              onClick={() => selectTool({ kind: "unit-eraser" })}
-              danger
-            >
-              <span className="w-4 text-center flex-shrink-0">✕</span>
-              Eraser
-            </ToolButton>
 
             <SectionTitle
               action={
@@ -751,7 +751,7 @@ export default function ScenarioEditor({
                 }
                 onClick={() => selectTool({ kind: "unit", faction: "axis", unitType: u.type })}
               >
-                <svg width={39} height={28} viewBox="0 0 36 26" className="flex-shrink-0">
+                <svg width={22} height={16} viewBox="0 0 36 26" className="flex-shrink-0">
                   <NATOTypeSymbol
                     type={u.type}
                     name={u.label}
@@ -762,14 +762,6 @@ export default function ScenarioEditor({
                 {u.label}
               </ToolButton>
             ))}
-            <ToolButton
-              active={selectedTool?.kind === "unit-eraser"}
-              onClick={() => selectTool({ kind: "unit-eraser" })}
-              danger
-            >
-              <span className="w-4 text-center flex-shrink-0">✕</span>
-              Eraser
-            </ToolButton>
 
             <SectionTitle
               action={
@@ -788,27 +780,26 @@ export default function ScenarioEditor({
               <span className="w-4 text-center flex-shrink-0">🎯</span>
               Objective
             </ToolButton>
-            <ToolButton
-              active={selectedTool?.kind === "objective-eraser"}
-              onClick={() => selectTool({ kind: "objective-eraser" })}
-              danger
-            >
-              <span className="w-4 text-center flex-shrink-0">✕</span>
-              Eraser
-            </ToolButton>
+
+            <p className="mt-4 text-[10px] leading-relaxed text-gray-600">
+              Right-click (or tap &amp; hold) a hex to remove the unit or objective on it.
+            </p>
           </div>
         </aside>
 
         {/* ── CENTER: hex map ──────────────────────────────────────────── */}
-        <main className="flex-1 min-w-0 flex items-center justify-center overflow-auto relative p-4">
-          <div className="flex justify-center">
+        <main className="flex-1 min-w-0 relative p-2">
+          {/* The map fills the middle column: viewBox + meet keeps the hex
+              grid centred and undistorted at any size. */}
+          <div className="absolute inset-0 flex items-center justify-center p-2">
             <svg
-              width={svgW}
-              height={svgH}
+              viewBox={`0 0 ${svgW} ${svgH}`}
+              width="100%"
+              height="100%"
+              preserveAspectRatio="xMidYMid meet"
               style={{
                 display: "block",
                 cursor: editing ? "crosshair" : "default",
-                maxWidth: "100%",
               }}
               onMouseLeave={() => setStackPicker(null)}
             >
@@ -835,6 +826,11 @@ export default function ScenarioEditor({
                       onTouchStart={e => {
                         e.preventDefault();
                         handlePointerDown(r, c, true);
+                      }}
+                      onContextMenu={e => {
+                        if (!editing) return;
+                        e.preventDefault();
+                        removeAt(r, c);
                       }}
                     >
                       <polygon

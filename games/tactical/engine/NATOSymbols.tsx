@@ -26,6 +26,20 @@ export function NATOInfantry({ fill, stroke, opacity = 1 }: NATOProps) {
   );
 }
 
+/** Assault squad — infantry frame with a close-combat bar across the base. */
+export function NATOAssault({ fill, stroke, opacity = 1 }: NATOProps) {
+  return (
+    <g opacity={opacity}>
+      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
+      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
+      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
+      <line x1="11" y1="21" x2="25" y2="21" stroke={stroke} strokeWidth="2.5" />
+      <circle cx="13" cy="3.5" r="2" fill={stroke} />
+      <circle cx="23" cy="3.5" r="2" fill={stroke} />
+    </g>
+  );
+}
+
 export function NATOMG({ fill, stroke, opacity = 1 }: NATOProps) {
   return (
     <g opacity={opacity}>
@@ -92,6 +106,7 @@ export function NATOTypeSymbol({
   if (type === "leader") {
     return <NATOLeader fill={fill} stroke={stroke} label={leaderLabel(name)} opacity={opacity} />;
   }
+  if (type === "assault") return <NATOAssault fill={fill} stroke={stroke} opacity={opacity} />;
   if (type === "mg") return <NATOMG fill={fill} stroke={stroke} opacity={opacity} />;
   if (type === "mortar") return <NATOMortar fill={fill} stroke={stroke} opacity={opacity} />;
   return <NATOInfantry fill={fill} stroke={stroke} opacity={opacity} />;

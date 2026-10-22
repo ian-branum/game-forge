@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const TerrainTypeSchema = z.enum([
-  "open", "road", "woods", "building", "rubble", "wall", "wheatfield"
+  "open", "road", "woods", "building", "rubble", "wheatfield"
 ]);
 
 export const FactionSchema = z.enum(["allied", "axis"]);
 
-export const UnitTypeSchema = z.enum(["infantry", "leader", "mg", "mortar", "vehicle"]);
+export const UnitTypeSchema = z.enum(["infantry", "assault", "leader", "mg", "mortar", "vehicle"]);
 
 export const PosSchema = z.object({
   row: z.number().int(),
