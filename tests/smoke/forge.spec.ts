@@ -20,10 +20,10 @@ test.describe("Forge a Game — page structure", () => {
   });
 
   test("FG-04 credit count is visible on the Forge page", async ({ page }) => {
-    // Credits shown in header or below the form
-    const creditsVisible =
-      (await page.getByText(/credits?/i).count()) > 0;
-    expect(creditsVisible).toBe(true);
+    // Credits shown below the form as "⚡ N credits remaining"
+    await expect(
+      page.getByText(/credits remaining/i)
+    ).toBeVisible({ timeout: 8_000 });
   });
 
   test("FG-02 Forge Game button is present", async ({ page }) => {
