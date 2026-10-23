@@ -2,14 +2,13 @@
 export type TerrainType =
   | "open"        // no cover, 1 MP
   | "road"        // no cover, 0.5 MP (fast movement)
-  | "woods"       // +2 defense, 2 MP, blocks LOS beyond 2 tiles
-  | "building"    // +3 defense, 2 MP, blocks LOS
-  | "rubble"      // +1 defense, 2 MP
-  | "wall"        // +1 defense, 1 MP, partial LOS block
+  | "woods"       // +3 defense, 2 MP, blocks LOS beyond 2 tiles
+  | "building"    // +4 defense, 2 MP, blocks LOS
+  | "rubble"      // +2 defense, 2 MP
   | "wheatfield"; // +1 defense, 1 MP, blocks LOS beyond 3 tiles
 
 export type Faction = "allied" | "axis";
-export type UnitType = "infantry" | "leader" | "mg" | "mortar" | "vehicle";
+export type UnitType = "infantry" | "assault" | "leader" | "mg" | "mortar" | "vehicle";
 export type UnitStatus = "normal" | "suppressed" | "broken" | "eliminated";
 export type Phase = "movement" | "combat" | "rally";
 export type GameResult = "ongoing" | "allied_win" | "axis_win" | "draw";

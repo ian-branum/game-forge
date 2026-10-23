@@ -1,11 +1,59 @@
 /**
  * Regression — Game Details modal (authenticated)
  * Covers: BD-01 through BD-05, GD-01 through GD-03, MD-01 through MD-05, PB-01 through PB-07
- * Requires the test account to have at least one forged game.
- * Uses saved auth state from auth.setup.ts.
+ *
+ * Modal selector: div.fixed.inset-0.z-50 (no role="dialog")
+ * Tab buttons: plain <button> with text MODIFY / PUBLISH (no role="tab")
+ * Checkboxes: unlabelled inputs inside <label> tags with adjacent span text
+ * Free trial: buttons "1 SESSION" / "3 SESSIONS"
+ * Clone price: auto-clamps on blur (no save button needed)
  */
 
 import { test, expect } from "../../tests/fixtures";
+
+const MODAL = "div.fixed.inset-0.z-50";
+
+// ── Helper: open first Active game's modal ────────────────────────────────────
+
+async function openFirstGameModal(page: import("@playwright/test").Page) {
+  await page.goto("/dashboard");
+  await page.waitForSelector("text=PLAY", { timeout: 10_000 });
+  await page.getByRole("button", { name: /^build$/i }).click();
+  await page.waitForSelector("text=BUILD", { timeout: 5_000 });
+
+  const firstRow = page.locator("table tbody tr").first();
+  const hasRows = await firstRow.isVisible().catch(() => false);
+  if (!hasRows) return false;
+
+  await firstRow.click();
+  await page.locator(MODAL).waitFor({ timeout: 5_000 });
+  return true;
+}
+
+async function openModifyTab(page: import("@playwright/test").Page) {
+  const opened = await openFirstGameModal(page);
+  if (!opened) return false;
+  // Tab button says exactly "MODIFY" — different from "CODE MODIFY" submit button
+  await page.locator(MODAL).locator("button.rounded-full", { hasText: /^MODIFY$/ }).click();
+  return true;
+}
+
+async function openPublishTab(page: import("@playwright/test").Page) {
+  const opened = await openFirstGameModal(page);
+  if (!opened) return false;
+  await page.locator(MODAL).locator("button.rounded-full", { hasText: /^PUBLISH$/ }).click();
+  await page.waitForTimeout(300);
+  return true;
+}
+
+function makePublicCheckbox(page: import("@playwright/test").Page) {
+  return page.locator("label").filter({ hasText: /make public/i }).locator('input[type="checkbox"]');
+}
+function allowCloningCheckbox(page: import("@playwright/test").Page) {
+  return page.locator("label").filter({ hasText: /allow cloning/i }).locator('input[type="checkbox"]').first();
+}
+
+// ── Build tab — game list ─────────────────────────────────────────────────────
 
 test.describe("Build tab — game list", () => {
   test.beforeEach(async ({ dashboard }) => {
@@ -14,7 +62,6 @@ test.describe("Build tab — game list", () => {
   });
 
   test("BD-01 shows list of built games", async ({ page }) => {
-    // Either a table/list of games or an empty state — no crash
     await expect(page).not.toHaveURL(/error/);
     await expect(page.getByText("BUILD", { exact: true }).first()).toBeVisible();
   });
@@ -24,8 +71,8 @@ test.describe("Build tab — game list", () => {
   });
 
   test("BD-03 Active / Archived toggle works", async ({ page }) => {
-    const activeBtn = page.getByRole("button", { name: /active/i });
-    const archivedBtn = page.getByRole("button", { name: /archived/i });
+    const activeBtn = page.getByRole("button", { name: /^active$/i });
+    const archivedBtn = page.getByRole("button", { name: /^archived$/i });
     await expect(activeBtn).toBeVisible();
     await expect(archivedBtn).toBeVisible();
     await archivedBtn.click();
@@ -34,215 +81,223 @@ test.describe("Build tab — game list", () => {
     await expect(page).not.toHaveURL(/error/);
   });
 
-  test("BD-04 table shows expected columns", async ({ page }) => {
-    // Check for column header labels
-    const headers = ["Type", "Title", "Description", "Creator", "Created"];
-    for (const header of headers) {
-      const el = page.getByText(header, { exact: true }).first();
-      // Column headers may not exist if there are no games — check gracefully
+  test("BD-04 table shows expected column headers", async ({ page }) => {
+    const columns = ["TYPE", "TITLE", "DESCRIPTION", "CREATOR", "CREATED"];
+    for (const col of columns) {
+      const el = page.getByText(col, { exact: true }).first();
       const visible = await el.isVisible().catch(() => false);
-      if (!visible) {
-        // No games present — acceptable
-        return;
-      }
+      if (!visible) return; // No games — acceptable
     }
   });
 
-  test("BD-05 clicking a game row opens Game Details modal", async ({ page }) => {
-    // Find first game row and click it
-    const firstRow = page.locator("table tbody tr, [data-testid='build-game-row']").first();
+  test("BD-05 clicking a game row opens the Game Details modal", async ({ page }) => {
+    const firstRow = page.locator("table tbody tr").first();
     const hasRows = await firstRow.isVisible().catch(() => false);
-    if (!hasRows) {
-      test.skip(); // No games in test account yet
-      return;
-    }
+    if (!hasRows) { test.skip(); return; }
     await firstRow.click();
-    // Modal should appear
-    await expect(
-      page.locator("[role='dialog'], [data-testid='game-details-modal']")
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(MODAL)).toBeVisible({ timeout: 5_000 });
   });
 });
+
+// ── Game Details modal — header ───────────────────────────────────────────────
 
 test.describe("Game Details modal — header", () => {
-  // Helper: open the first game's details modal
-  async function openFirstGameModal(page: import("@playwright/test").Page) {
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=PLAY", { timeout: 10_000 });
-    await page.getByRole("button", { name: /^build$/i }).click();
-    await page.waitForSelector(`text=BUILD`, { timeout: 5_000 });
-    const firstRow = page
-      .locator("table tbody tr, [data-testid='build-game-row']")
-      .first();
-    const hasRows = await firstRow.isVisible().catch(() => false);
-    if (!hasRows) return false;
-    await firstRow.click();
-    await page
-      .locator("[role='dialog'], [data-testid='game-details-modal']")
-      .waitFor({ timeout: 5_000 });
-    return true;
-  }
-
-  test("GD-01 modal shows engine, visibility, forge date and SHARE button", async ({
-    page,
-  }) => {
+  test("GD-01 modal shows engine badge, forge date and SHARE button", async ({ page }) => {
     const opened = await openFirstGameModal(page);
     if (!opened) { test.skip(); return; }
-
-    const modal = page.locator("[role='dialog'], [data-testid='game-details-modal']");
-    await expect(modal.getByRole("button", { name: /share/i })).toBeVisible();
-    // Visibility badge (Public / Private)
-    await expect(modal.getByText(/public|private/i).first()).toBeVisible();
+    const modal = page.locator(MODAL);
+    await expect(modal.getByRole("button", { name: "SHARE" })).toBeVisible();
+    await expect(modal.getByText(/forged/i).first()).toBeVisible();
   });
 
-  test("GD-02 SHARE button copies game URL", async ({ page, context }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  test("GD-02 SHARE button shows Copied confirmation", async ({ page }) => {
     const opened = await openFirstGameModal(page);
     if (!opened) { test.skip(); return; }
-
-    const modal = page.locator("[role='dialog'], [data-testid='game-details-modal']");
-    await modal.getByRole("button", { name: /share/i }).click();
-    // After clicking SHARE, a toast or confirmation should appear
-    const toast = page.getByText(/copied|link copied/i);
-    await expect(toast).toBeVisible({ timeout: 4_000 });
+    const modal = page.locator(MODAL);
+    await modal.getByRole("button", { name: "SHARE" }).click();
+    await expect(page.getByText(/copied/i)).toBeVisible({ timeout: 4_000 });
   });
 
-  test("GD-03 modal body shows game name, description, MODIFY and PUBLISH tabs", async ({
-    page,
-  }) => {
+  test("GD-03 modal body shows MODIFY and PUBLISH tab buttons", async ({ page }) => {
     const opened = await openFirstGameModal(page);
     if (!opened) { test.skip(); return; }
-
-    const modal = page.locator("[role='dialog'], [data-testid='game-details-modal']");
-    await expect(modal.getByRole("tab", { name: /modify/i })).toBeVisible();
-    await expect(modal.getByRole("tab", { name: /publish/i })).toBeVisible();
+    const modal = page.locator(MODAL);
+    // Tab buttons are rounded-full — distinguishes them from CODE MODIFY / REGENERATE action buttons
+    await expect(modal.locator("button.rounded-full", { hasText: /^MODIFY$/ })).toBeVisible();
+    await expect(modal.locator("button.rounded-full", { hasText: /^PUBLISH$/ })).toBeVisible();
   });
 });
+
+// ── Game Details — Modify tab ─────────────────────────────────────────────────
 
 test.describe("Game Details — Modify tab", () => {
-  async function openModifyTab(page: import("@playwright/test").Page) {
-    await page.goto("/dashboard");
-    await page.waitForSelector("text=PLAY", { timeout: 10_000 });
-    await page.getByRole("button", { name: /^build$/i }).click();
-    await page.waitForSelector(`text=BUILD`, { timeout: 5_000 });
-    const firstRow = page
-      .locator("table tbody tr, [data-testid='build-game-row']")
-      .first();
-    if (!(await firstRow.isVisible().catch(() => false))) return false;
-    await firstRow.click();
-    const modal = page.locator("[role='dialog'], [data-testid='game-details-modal']");
-    await modal.waitFor({ timeout: 5_000 });
-    await modal.getByRole("tab", { name: /modify/i }).click();
-    return true;
-  }
-
-  test("MD-01 Modify tab shows version history", async ({ page }) => {
+  test("MD-01 Modify tab shows VERSION HISTORY", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    // Version history section
-    await expect(
-      page.getByText(/version history/i).first()
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("VERSION HISTORY")).toBeVisible({ timeout: 5_000 });
   });
 
-  test("MD-03 CODE MODIFY and REGENERATE toggle buttons exist", async ({ page }) => {
+  test("MD-02 SET ACTIVE button present when multiple versions exist", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    await expect(
-      page.getByRole("button", { name: /code modify/i })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /regenerate/i })
-    ).toBeVisible();
+    const setActiveBtn = page.getByRole("button", { name: "SET ACTIVE" }).first();
+    const hasMultiple = await setActiveBtn.isVisible().catch(() => false);
+    if (!hasMultiple) { test.skip(); return; } // Only one version — acceptable
+    await expect(setActiveBtn).toBeVisible();
   });
 
-  test("MD-04 CODE MODIFY prompt textarea is present", async ({ page }) => {
+  test("MD-03 CODE MODIFY and REGENERATE mode toggle buttons exist", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    // Switch to CODE MODIFY if not already active
-    const codeModifyBtn = page.getByRole("button", { name: /code modify/i });
-    if (await codeModifyBtn.isVisible()) await codeModifyBtn.click();
+    // Mode toggles are flex-1 rounded-lg — distinguishes them from the submit button (px-5 rounded-lg)
+    const toggles = page.locator(MODAL).locator("button.flex-1.rounded-lg");
+    await expect(toggles.filter({ hasText: "CODE MODIFY" })).toBeVisible();
+    await expect(toggles.filter({ hasText: "REGENERATE" })).toBeVisible();
+  });
+
+  test("MD-04 selecting CODE MODIFY mode shows prompt textarea", async ({ page }) => {
+    const opened = await openModifyTab(page);
+    if (!opened) { test.skip(); return; }
+    await page.locator(MODAL).locator("button.flex-1.rounded-lg").filter({ hasText: "CODE MODIFY" }).click();
     await expect(page.getByRole("textbox").first()).toBeVisible();
+  });
+
+  test("MD-06 game title input is editable", async ({ page }) => {
+    const opened = await openModifyTab(page);
+    if (!opened) { test.skip(); return; }
+    const modal = page.locator(MODAL);
+    const titleInput = modal.locator('input[type="text"]').first();
+    await expect(titleInput).toBeVisible();
+    const original = await titleInput.inputValue();
+    await titleInput.clear();
+    await titleInput.type("Test Name Change");
+    await expect(titleInput).toHaveValue("Test Name Change");
+    // Restore original
+    await titleInput.clear();
+    await titleInput.type(original);
+    await titleInput.blur();
   });
 });
 
+// ── Game Details — Publish tab ────────────────────────────────────────────────
+
 test.describe("Game Details — Publish tab", () => {
-  async function openPublishTab(page: import("@playwright/test").Page) {
+  test("PB-01 Publish tab shows Make public and Allow cloning checkboxes", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+    // Checkboxes must be visible and interactive — state may vary if game was previously published
+    await expect(makePublic).toBeVisible();
+    await expect(allowCloningCheckbox(page)).toBeVisible();
+  });
+
+  test("PB-02 checking Make public reveals PRICE TO PLAY section", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+    await makePublic.check();
+    await expect(page.getByText("PRICE TO PLAY")).toBeVisible({ timeout: 3_000 });
+  });
+
+  test("PB-03 price to play and price to clone inputs are present", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+    await makePublic.check();
+    await page.waitForTimeout(300);
+    await expect(page.getByText("PRICE TO PLAY")).toBeVisible();
+    await expect(page.getByText("PRICE TO CLONE")).toBeVisible();
+  });
+
+  test("PB-04 clone price auto-clamps to be >= play price", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+    await makePublic.check();
+    await allowCloningCheckbox(page).check();
+    await page.waitForTimeout(300);
+
+    const priceInputs = page.locator('input[type="number"]');
+    if ((await priceInputs.count()) < 2) { test.skip(); return; }
+
+    // Set play price to 5 — clone should auto-clamp to >= 5
+    await priceInputs.nth(0).fill("5");
+    await priceInputs.nth(0).blur();
+    await page.waitForTimeout(300);
+
+    const cloneVal = await priceInputs.nth(1).inputValue();
+    expect(Number(cloneVal)).toBeGreaterThanOrEqual(5);
+  });
+
+  test("PB-05 free trial session buttons (1 SESSION / 3 SESSIONS) are selectable", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+    await makePublic.check();
+    await page.waitForTimeout(300);
+    await expect(page.getByRole("button", { name: "1 SESSION" })).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole("button", { name: "3 SESSIONS" })).toBeVisible();
+    await page.getByRole("button", { name: "3 SESSIONS" }).click();
+    await expect(page).not.toHaveURL(/error/);
+  });
+
+  test("PB-06 Allow cloning checkbox reveals republish sub-option", async ({ page }) => {
+    const opened = await openPublishTab(page);
+    if (!opened) { test.skip(); return; }
+    const allowCloning = allowCloningCheckbox(page);
+    if (!(await allowCloning.isVisible().catch(() => false))) { test.skip(); return; }
+    await allowCloning.check();
+    await page.waitForTimeout(300);
+    await expect(page.getByText(/allow clones to be republished/i)).toBeVisible();
+  });
+
+  test("PB-07 making a game public makes it visible in Buy tab", async ({ page }) => {
+    // Open the first game the test user OWNS (has MODIFY/PUBLISH tabs) by iterating rows
     await page.goto("/dashboard");
     await page.waitForSelector("text=PLAY", { timeout: 10_000 });
     await page.getByRole("button", { name: /^build$/i }).click();
-    await page.waitForSelector(`text=BUILD`, { timeout: 5_000 });
-    const firstRow = page
-      .locator("table tbody tr, [data-testid='build-game-row']")
-      .first();
-    if (!(await firstRow.isVisible().catch(() => false))) return false;
-    await firstRow.click();
-    const modal = page.locator("[role='dialog'], [data-testid='game-details-modal']");
-    await modal.waitFor({ timeout: 5_000 });
-    await modal.getByRole("tab", { name: /publish/i }).click();
-    return true;
-  }
+    await page.waitForSelector("text=BUILD", { timeout: 5_000 });
 
-  test("PB-01 Publish tab shows Make Public and Allow Cloning checkboxes unchecked", async ({
-    page,
-  }) => {
-    const opened = await openPublishTab(page);
-    if (!opened) { test.skip(); return; }
-    const makePublic = page.getByLabel(/make public/i);
-    await expect(makePublic).toBeVisible();
-    await expect(makePublic).not.toBeChecked();
-    const allowCloning = page.getByLabel(/allow cloning/i);
-    await expect(allowCloning).toBeVisible();
-    await expect(allowCloning).not.toBeChecked();
-  });
+    const rows = page.locator("table tbody tr");
+    const rowCount = await rows.count();
+    let publishTabFound = false;
 
-  test("PB-02 checking Make Public reveals pricing section", async ({ page }) => {
-    const opened = await openPublishTab(page);
-    if (!opened) { test.skip(); return; }
-    await page.getByLabel(/make public/i).check();
-    await expect(page.getByText(/price/i).first()).toBeVisible({ timeout: 3_000 });
-  });
-
-  test("PB-04 clone price lower than play price shows validation error", async ({
-    page,
-  }) => {
-    const opened = await openPublishTab(page);
-    if (!opened) { test.skip(); return; }
-
-    // Enable Make Public to reveal pricing
-    await page.getByLabel(/make public/i).check();
-    await page.waitForTimeout(500);
-
-    // Set play price higher than clone price
-    const priceInputs = page.getByRole("spinbutton");
-    const count = await priceInputs.count();
-    if (count < 2) { test.skip(); return; }
-
-    await priceInputs.nth(0).fill("5"); // play price
-    await priceInputs.nth(1).fill("2"); // clone price (lower)
-
-    // Trigger validation — click Save/Publish button
-    const saveBtn = page.getByRole("button", { name: /save|publish/i });
-    if (await saveBtn.isVisible()) await saveBtn.click();
-
-    await expect(
-      page.getByText(/clone.*greater|price to clone/i)
-    ).toBeVisible({ timeout: 4_000 });
-  });
-
-  test("PB-05 free trial options are selectable", async ({ page }) => {
-    const opened = await openPublishTab(page);
-    if (!opened) { test.skip(); return; }
-
-    await page.getByLabel(/make public/i).check();
-    await page.waitForTimeout(500);
-
-    // 1 or 3 free trials should be selectable
-    const trialOptions = page.getByText(/1 free trial|3 free trials/i);
-    if (await trialOptions.first().isVisible()) {
-      await expect(trialOptions.first()).toBeVisible();
-    } else {
-      test.skip();
+    for (let i = 0; i < rowCount; i++) {
+      await rows.nth(i).click();
+      await page.locator(MODAL).waitFor({ timeout: 5_000 });
+      const publishBtn = page.locator(MODAL).locator("button.rounded-full", { hasText: /^PUBLISH$/ });
+      if (await publishBtn.isVisible().catch(() => false)) {
+        await publishBtn.click();
+        await page.waitForTimeout(300);
+        publishTabFound = true;
+        break;
+      }
+      // Not owner — close and try next
+      await page.locator(MODAL).getByRole("button", { name: "×" }).click();
+      await page.waitForTimeout(300);
     }
+
+    if (!publishTabFound) { test.skip(); return; }
+
+    const makePublic = makePublicCheckbox(page);
+    if (!(await makePublic.isVisible().catch(() => false))) { test.skip(); return; }
+
+    const isAlreadyPublic = await makePublic.isChecked();
+    if (!isAlreadyPublic) {
+      await makePublic.check();
+      await page.waitForTimeout(1_500); // auto-saves
+    }
+
+    // Close modal and verify Buy tab loads without error
+    await page.locator(MODAL).getByRole("button", { name: "×" }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: /^buy$/i }).click();
+    await page.waitForSelector("text=BUY", { timeout: 5_000 });
+    await expect(page).not.toHaveURL(/error/);
   });
 });

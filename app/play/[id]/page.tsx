@@ -6,7 +6,10 @@ import TrialGate from "@/components/TrialGate";
 export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const row = await prisma.scenario.findUnique({ where: { id } });
+  const row = await prisma.scenario.findUnique({
+    where: { id },
+    include: { activeVersion: { select: { payload: true } } },
+  });
   if (!row) return notFound();
 
   const plugin = getPlayerPlugin(row.category);
@@ -14,10 +17,14 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
 
   const { Player } = plugin;
 
+  // Use the active version's payload if one is set; otherwise fall back to the
+  // original V1 payload stored directly on the scenario row.
+  const activePayload = row.activeVersion?.payload ?? row.payload;
+
   // Tactical scenarios need the DB id injected into the payload
   const payload = row.category === "tactical"
-    ? { ...(row.payload as object), id: row.id }
-    : row.payload;
+    ? { ...(activePayload as object), id: row.id }
+    : activePayload;
 
   // The gate POSTs to /api/play/[id]/start on mount and renders the game only
   // once the server confirms the viewer is the owner, licensed, or within trial.

@@ -1,7 +1,7 @@
 // Tracer / muzzle-flash animation for Squad Leader.
 // Draws onto a <canvas> overlay that sits on top of the SVG map.
 
-export type UnitType = "infantry" | "leader" | "mg" | "mortar" | "vehicle";
+export type UnitType = "infantry" | "assault" | "leader" | "mg" | "mortar" | "vehicle";
 
 interface Particle {
   x: number; y: number;       // current position
@@ -100,7 +100,7 @@ export function animateTracers(
 
   // ── Build particles per unit type ─────────────────────────────────────────
 
-  if (unitType === "infantry") {
+  if (unitType === "infantry" || unitType === "assault") {
     // 8–12 individual rifles from various points in source hex → various in target
     const count = 8 + Math.floor(Math.random() * 5);
     for (let i = 0; i < count; i++) {

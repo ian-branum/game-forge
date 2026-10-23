@@ -7,7 +7,7 @@ function t(terrain: TerrainType, objective?: boolean): Tile {
 // 12 rows × 16 cols
 // Layout:
 //   rows 0-2: woods (NW), open fields
-//   row 5: east-west road + stone wall below it
+//   row 5: east-west road + rubble line below it
 //   rows 4-7: building clusters (village center/right)
 //   rows 9-11: wheatfields, allied start (SW)
 //   col 0-3: woods (ally approach)
@@ -24,8 +24,8 @@ const map: Tile[][] = [
   [t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open")],
   // row 4 — upper village buildings
   [t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("open"), t("building"),t("building"),t("open"), t("open")],
-  // row 5 — road + wall + village center (with farmhouse objective)
-  [t("wall"), t("wall"), t("wall"), t("wall"), t("wall"), t("road"), t("road"), t("road"), t("road"), t("building", true),t("road"), t("building"),t("building"),t("open"), t("open"), t("open")],
+  // row 5 — road + rubble + village center (with farmhouse objective)
+  [t("rubble"), t("rubble"), t("rubble"), t("rubble"), t("rubble"), t("road"), t("road"), t("road"), t("road"), t("building", true),t("road"), t("building"),t("building"),t("open"), t("open"), t("open")],
   // row 6 — road continues, building cluster south
   [t("open"), t("open"), t("open"), t("open"), t("road"), t("road"), t("road"), t("road"), t("open"), t("open"), t("open"), t("building"),t("open"), t("open"), t("building", true),t("open")],
   // row 7 — rubble from damaged buildings

@@ -14,6 +14,12 @@ import {
 } from "./engine/engine";
 import { playSquadFire, playLeaderFire, playMGFire } from "./engine/sounds";
 import { animateTracers } from "./engine/tracers";
+import {
+  FACTION_FILL,
+  FACTION_STROKE,
+  NATOInfantry,
+  NATOSymbol,
+} from "./engine/NATOSymbols";
 
 // ─── Hex geometry ─────────────────────────────────────────────────────────────
 const HEX_SIZE = 26;
@@ -52,9 +58,8 @@ const TERRAIN_FILL: Record<string, string> = {
   open:       "#b8a85c",
   road:       "#7a6540",
   woods:      "#2a5218",
-  building:   "#7a5c10",
-  rubble:     "#5a5a5a",
-  wall:       "#8a7a5a",
+  building:   "#3a3a3a",
+  rubble:     "#4a4038",
   wheatfield: "#c89830",
 };
 
@@ -62,9 +67,8 @@ const TERRAIN_STROKE: Record<string, string> = {
   open:       "#9a8a48",
   road:       "#5a4828",
   woods:      "#1a3a0c",
-  building:   "#5a4008",
-  rubble:     "#3a3a3a",
-  wall:       "#6a5a3a",
+  building:   "#242424",
+  rubble:     "#333333",
   wheatfield: "#a07820",
 };
 
@@ -74,17 +78,15 @@ const TERRAIN_LABEL: Record<string, string> = {
   woods:      "Woods",
   building:   "Building",
   rubble:     "Rubble",
-  wall:       "Stone Wall",
   wheatfield: "Wheatfield",
 };
 
 const TERRAIN_EFFECT: Record<string, string> = {
   open:       "No cover. Fast movement (1 MP).",
   road:       "No cover. Very fast movement (0.5 MP).",
-  woods:      "+2 defense. Slow movement (2 MP). Blocks LOS beyond 2 hexes.",
-  building:   "+3 defense. Slow movement (2 MP). Blocks LOS entirely.",
-  rubble:     "+1 defense. Slow movement (2 MP).",
-  wall:       "+1 defense. Normal movement (1 MP). Partial LOS block.",
+  woods:      "+3 defense. Slow movement (2 MP). Blocks LOS beyond 2 hexes.",
+  building:   "+4 defense. Slow movement (2 MP). Blocks LOS entirely.",
+  rubble:     "+2 defense. Slow movement (2 MP).",
   wheatfield: "+1 defense. Normal movement (1 MP). Blocks LOS beyond 3 hexes.",
 };
 
@@ -95,92 +97,12 @@ const STATUS_COLORS: Record<string, string> = {
   eliminated: "#6b7280",
 };
 
-const FACTION_FILL: Record<string, string>   = { allied: "#4a5e2a", axis: "#6b7355" };
-const FACTION_STROKE: Record<string, string> = { allied: "#a0b860", axis: "#c8ceb0" };
-
-// ─── NATO symbology ───────────────────────────────────────────────────────────
-type NATOProps = { fill: string; stroke: string; opacity?: number };
-
-function NATOInfantry({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <circle cx="13" cy="3.5" r="2" fill={stroke} />
-      <circle cx="23" cy="3.5" r="2" fill={stroke} />
-    </g>
-  );
-}
-
-function NATОМG({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <text x="18" y="20" textAnchor="middle" fontSize="7" fill={stroke} fontWeight="bold" fontFamily="monospace">MG</text>
-      <circle cx="18" cy="3.5" r="2" fill={stroke} />
-    </g>
-  );
-}
-
-function NATOMortar({ fill, stroke, opacity = 1 }: NATOProps) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="7" width="32" height="18" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <line x1="2" y1="7" x2="34" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <line x1="34" y1="7" x2="2" y2="25" stroke={stroke} strokeWidth="1.5" />
-      <text x="18" y="20" textAnchor="middle" fontSize="7" fill={stroke} fontWeight="bold" fontFamily="monospace">MTR</text>
-    </g>
-  );
-}
-
-function NATOLeader({ fill, stroke, label, opacity = 1 }: NATOProps & { label: string }) {
-  return (
-    <g opacity={opacity}>
-      <rect x="2" y="4" width="32" height="20" fill={fill} stroke={stroke} strokeWidth="1.5" rx="1" />
-      <text x="18" y="17" textAnchor="middle" fontSize="7.5" fill={stroke} fontWeight="bold" fontFamily="monospace">
-        {label}
-      </text>
-    </g>
-  );
-}
-
-function NATOSymbol({ unit, opacity }: { unit: Unit; opacity?: number }) {
-  const fill   = FACTION_FILL[unit.faction];
-  const stroke = FACTION_STROKE[unit.faction];
-  const op     = opacity ?? 1;
-
-  if (unit.type === "leader") {
-    const n = unit.name.toLowerCase();
-    const label = n.includes("plt") || n.includes("platoon") ? "PLT"
-      : n.includes("coy") || n.includes("company") || n.includes("cdr") ? "COY"
-      : n.includes("1sg") || n.includes("first sgt") ? "1SG"
-      : n.includes("sgt") || n.includes("sergeant") || n.includes("feldwebel") ? "SGT"
-      : n.includes("lt") || n.includes("lieutenant") || n.includes("leutnant") ? "LT"
-      : "LDR";
-    return <NATOLeader fill={fill} stroke={stroke} label={label} opacity={op} />;
-  }
-  if (unit.type === "mg") return <NATОМG fill={fill} stroke={stroke} opacity={op} />;
-  if (unit.type === "mortar") return <NATOMortar fill={fill} stroke={stroke} opacity={op} />;
-  return <NATOInfantry fill={fill} stroke={stroke} opacity={op} />;
-}
-
 function TerrainIcon({ terrain, cx, cy }: { terrain: string; cx: number; cy: number }) {
   if (terrain === "woods") {
     return <text x={cx} y={cy + 4} textAnchor="middle" fontSize="13" opacity={0.55} style={{ userSelect: "none" }}>🌲</text>;
   }
   if (terrain === "building") {
     return <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" opacity={0.6} style={{ userSelect: "none" }}>🏠</text>;
-  }
-  if (terrain === "wall") {
-    return (
-      <>
-        <line x1={cx - 8} y1={cy} x2={cx + 8} y2={cy} stroke="#6a5a3a" strokeWidth="3" strokeLinecap="round" opacity={0.7} />
-        <line x1={cx - 4} y1={cy + 4} x2={cx + 4} y2={cy + 4} stroke="#6a5a3a" strokeWidth="3" strokeLinecap="round" opacity={0.5} />
-      </>
-    );
   }
   if (terrain === "rubble") {
     return <text x={cx} y={cy + 4} textAnchor="middle" fontSize="10" opacity={0.55} style={{ userSelect: "none" }}>💥</text>;
@@ -319,11 +241,13 @@ function RulesModal({ onClose }: { onClose: () => void }) {
           <p><strong style={{ color: "#e2e8f0" }}>To fire:</strong> Select your unit, then click a highlighted enemy target (red border). Combat is resolved automatically.</p>
           <p><strong style={{ color: "#e2e8f0" }}>Fire Resolution:</strong></p>
           <ul style={{ paddingLeft: 20, margin: "6px 0" }}>
-            <li>Roll: <code style={{ color: "#a5b4fc" }}>Random(0–10) + ATK + Leader Bonus</code></li>
+            <li>Roll: <code style={{ color: "#a5b4fc" }}>2D6</code> (2–12, bell curve)</li>
+            <li>Attack: <code style={{ color: "#a5b4fc" }}>ATK + Leader Bonus + Assault Bonus (+2 at 1 hex)</code></li>
             <li>Defense: <code style={{ color: "#a5b4fc" }}>DEF + Terrain Bonus − Suppression Penalty</code></li>
-            <li>Roll &gt; Defense + 4 → <strong style={{ color: "#6b7280" }}>ELIMINATED</strong></li>
-            <li>Roll &gt; Defense + 2 → <strong style={{ color: "#ef4444" }}>BROKEN</strong></li>
-            <li>Roll &gt; Defense → <strong style={{ color: "#f59e0b" }}>SUPPRESSED</strong></li>
+            <li>Net = Roll + Attack − Defense</li>
+            <li>Net ≥ 8 → <strong style={{ color: "#6b7280" }}>ELIMINATED</strong></li>
+            <li>Net ≥ 5 → <strong style={{ color: "#ef4444" }}>BROKEN</strong></li>
+            <li>Net ≥ 2 → <strong style={{ color: "#f59e0b" }}>SUPPRESSED</strong></li>
             <li>Otherwise → <strong style={{ color: "#94a3b8" }}>MISS</strong></li>
           </ul>
           <p>A unit that has fired is marked SPENT for the remainder of the phase.</p>
@@ -335,7 +259,6 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <li><strong style={{ color: "#e2e8f0" }}>Buildings</strong> block LOS entirely.</li>
             <li><strong style={{ color: "#e2e8f0" }}>Woods</strong> block LOS beyond 2 hexes.</li>
             <li><strong style={{ color: "#e2e8f0" }}>Wheatfields</strong> block LOS beyond 3 hexes.</li>
-            <li><strong style={{ color: "#e2e8f0" }}>Walls</strong> provide partial cover but do not block LOS.</li>
             <li>Open ground and roads do not block LOS.</li>
           </ul>
         </RulesSection>
@@ -348,12 +271,13 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             <li><strong style={{ color: "#ef4444" }}>Broken</strong> — can only flee; must roll to rally</li>
             <li><strong style={{ color: "#6b7280" }}>Eliminated</strong> — removed from play permanently</li>
           </ul>
-          <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>Random(0–10) + Leader Bonus &gt; (10 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>Squads vs Teams:</strong> squads (Rifle, Assault) degrade step by step — Suppressed → Broken → Eliminated. Teams (MG, Mortar, Leader, Vehicle) cannot be broken: a BROKEN result eliminates them instead.</p>
+          <p><strong style={{ color: "#e2e8f0" }}>Rally Roll (Broken units):</strong> <code style={{ color: "#a5b4fc" }}>2D6 + Leader Bonus &gt; (12 − Morale)</code>. Success restores the unit to Normal and adds +1 Morale.</p>
         </RulesSection>
 
         <RulesSection num="7.0" title="LEADERS">
           <p>Leader units (Sergeants, Lieutenants, etc.) provide a <strong style={{ color: "#e2e8f0" }}>+1 combat bonus</strong> and <strong style={{ color: "#e2e8f0" }}>+2 rally bonus</strong> to all friendly units within 2 hexes.</p>
-          <p>Leaders are high-value targets — losing your leader significantly degrades your force's effectiveness. Keep them close to the fighting, but not in the front line.</p>
+          <p>Leaders are high-value targets, but a leader stacked with another friendly unit cannot be singled out — it is protected while it shares a hex. Keep them close to the fighting, but paired with a squad.</p>
         </RulesSection>
 
         <RulesSection num="8.0" title="OBJECTIVES & VICTORY">
@@ -418,7 +342,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
               <div><strong style={{ color: "#e2e8f0" }}>DEF</strong> — Defense value (added to terrain bonus)</div>
               <div><strong style={{ color: "#e2e8f0" }}>MOV</strong> — Movement points per turn</div>
               <div><strong style={{ color: "#e2e8f0" }}>MRL</strong> — Morale (affects rally difficulty)</div>
-              <div><strong style={{ color: "#e2e8f0" }}>Symbol</strong> — Unit type (infantry, MG, mortar, leader)</div>
+              <div><strong style={{ color: "#e2e8f0" }}>Symbol</strong> — Unit type (infantry, assault, MG, mortar, leader)</div>
             </div>
           </div>
         </RulesSection>
@@ -473,7 +397,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
             {scenario.units.filter(u => u.faction === "allied").map(u => (
               <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400 mb-1">
                 <svg width="28" height="20" viewBox="0 0 36 26">
-                  <NATOSymbol unit={{ ...u, status: "normal", mpUsed: 0, hasFired: false }} />
+                  <NATOSymbol unit={u} />
                 </svg>
                 <span>{u.name}</span>
               </div>
@@ -484,7 +408,7 @@ function BriefingScreen({ scenario, onStart }: { scenario: ScenarioDefinition; o
             {scenario.units.filter(u => u.faction === "axis").map(u => (
               <div key={u.id} className="flex items-center gap-2 text-xs text-gray-400 mb-1">
                 <svg width="28" height="20" viewBox="0 0 36 26">
-                  <NATOSymbol unit={{ ...u, status: "normal", mpUsed: 0, hasFired: false }} />
+                  <NATOSymbol unit={u} />
                 </svg>
                 <span>{u.name}</span>
               </div>
@@ -590,8 +514,20 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     if (!gameState) return;
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    // The map uses xMidYMid meet, so scale is determined by whichever
+    // dimension is the tighter constraint. Compute both and pick the smaller.
+    const vbWidth  = svg.viewBox.baseVal.width  || 1;
+    const vbHeight = svg.viewBox.baseVal.height || 1;
+    const scaleX = rect.width  / vbWidth;
+    const scaleY = rect.height / vbHeight;
+    const scale  = Math.min(scaleX, scaleY);
+    // The rendered map is centered, so offset by any letterbox padding.
+    const renderedW = vbWidth  * scale;
+    const renderedH = vbHeight * scale;
+    const offsetX = (rect.width  - renderedW) / 2;
+    const offsetY = (rect.height - renderedH) / 2;
+    const px = (e.clientX - rect.left - offsetX) / scale;
+    const py = (e.clientY - rect.top  - offsetY) / scale;
     const rows = gameState.map.length;
     const cols = gameState.map[0]?.length ?? 0;
     const hex = pixelToHex(px, py, rows, cols);
@@ -788,7 +724,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     objectives.find(o => o.pos.row === r && o.pos.col === c);
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: "#05071a", color: "#e2e8f0" }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 56px)", background: "#05071a", color: "#e2e8f0" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-2 border-b"
@@ -854,16 +790,20 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Hex map ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-auto p-2" style={{ position: "relative" }}>
+        <div className="flex-1 relative min-w-0 min-h-0">
+          <div className="absolute inset-0 p-2 flex items-center justify-center overflow-hidden">
+          <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <canvas
             ref={tracerCanvas}
             width={SVG_W}
             height={SVG_H}
-            style={{ position: "absolute", top: "8px", left: "8px", width: SVG_W, height: SVG_H, pointerEvents: "none", zIndex: 10 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 10 }}
           />
           <svg
-            width={SVG_W}
-            height={SVG_H}
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            width="100%"
+            height="100%"
+            preserveAspectRatio="xMidYMid meet"
             style={{ display: "block", cursor: "crosshair" }}
             onMouseMove={handleSVGMouseMove}
             onMouseLeave={handleSVGMouseLeave}
@@ -944,6 +884,8 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
               )}
             </div>
           )}
+          </div>
+          </div>
         </div>
 
         {/* ── Right panel ─────────────────────────────────────────────── */}

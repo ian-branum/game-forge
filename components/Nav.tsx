@@ -108,7 +108,14 @@ export default function Nav() {
         <div className="flex items-center gap-4">
           {session ? (
             <>
-              {!isPlay && (
+              {isPlay ? (
+                <button
+                  onClick={() => router.back()}
+                  className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
+                  style={{ background: "#1e2a4a44", border: "1px solid #1e2a4a", color: "#94a3b8" }}>
+                  ← BACK
+                </button>
+              ) : (
                 <Link href="/forge"
                   className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
                   style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: "#4488ff" }}>

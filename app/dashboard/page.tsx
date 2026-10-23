@@ -104,15 +104,8 @@ const creatorUrl = (name: string) => `/dashboard?tab=buy&creator=${encodeURIComp
 
 // ─── Modify Modal ────────────────────────────────────────────────────────────
 
-// Credit costs surfaced in the UI (must match lib/pricing.ts)
-const MODIFY_COSTS: Record<string, { codeModify: number; regenerate: number }> = {
-  sandbox:   { codeModify: 3, regenerate: 3 },
-  tactical:  { codeModify: 3, regenerate: 3 },
-  narrative: { codeModify: 4, regenerate: 4 },
-};
-
 type ModalTab = "modify" | "publish";
-type ModifyMode = "codeModify" | "regenerate";
+type ModifyMode = "prompt" | "manual";
 
 function ModifyModal({
   scenario,
@@ -127,12 +120,13 @@ function ModifyModal({
   onModified: (updated: ScenarioSummary) => void;
   onArchived: (id: string) => void;
 }) {
+  const router = useRouter();
   const meta = CATEGORY_META[scenario.category] ?? CATEGORY_META.sandbox;
   const isOwner = scenario.userId === currentUserId;
-  const costs = MODIFY_COSTS[scenario.category] ?? MODIFY_COSTS.sandbox;
+  const isTactical = scenario.category === "tactical";
 
   const [modalTab, setModalTab] = useState<ModalTab>("modify");
-  const [modifyMode, setModifyMode] = useState<ModifyMode>("codeModify");
+  const [modifyMode, setModifyMode] = useState<ModifyMode>("prompt");
 
   const [versions, setVersions] = useState<GameVersion[]>(scenario.versions ?? []);
   const [activeVersionId, setActiveVersionId] = useState<string | null>(scenario.activeVersionId ?? null);
@@ -256,8 +250,8 @@ function ModifyModal({
   };
 
   // Code Modify: existing code + new instruction
-  const handleCodeModify = async () => {
-    if (!modifyPrompt.trim()) return;
+  const handleCodeModify = async (): Promise<boolean> => {
+    if (!modifyPrompt.trim()) return false;
     setWorking(true);
     setModifyError("");
     try {
@@ -267,8 +261,8 @@ function ModifyModal({
         body: JSON.stringify({ modificationPrompt: modifyPrompt }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 402) { setModifyError("Not enough credits"); return; }
-      if (!res.ok) { setModifyError(data.error ?? "Modify failed"); return; }
+      if (res.status === 402) { setModifyError("Not enough credits"); return false; }
+      if (!res.ok) { setModifyError(data.error ?? "Modify failed"); return false; }
       const newVersion = data.version as GameVersion | undefined;
       if (newVersion) {
         setModifyPrompt("");
@@ -283,12 +277,27 @@ function ModifyModal({
         onModified({ ...scenario, title: updatedTitle, description: updatedDesc, activeVersionId: newVersion.id, versions: updated, isPublic: pubPublic });
         window.dispatchEvent(new Event("gf:credits"));
         flashModifySuccess();
+        return true;
       }
+      return false;
     } catch {
       setModifyError("Something went wrong. Please try again.");
+      return false;
     } finally {
       setWorking(false);
     }
+  };
+
+  // Apply AI changes, then hand over to the tactical scenario editor.
+  const handleApplyAndEdit = async () => {
+    const ok = await handleCodeModify();
+    if (ok) router.push(`/editor/${scenario.id}`);
+  };
+
+  // Skip AI entirely — go straight to the editor with the current scenario.
+  const handleEditManually = () => {
+    onClose();
+    router.push(`/editor/${scenario.id}`);
   };
 
   // Regenerate: prompts only → fresh code
@@ -532,20 +541,37 @@ function ModifyModal({
                 <div className="divide-y" style={{ borderColor: "#1e2a4a" }}>
 
                   {/* V1 — original, always shown */}
-                  <div className="flex items-start gap-3 py-2.5">
-                    <span className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded mt-0.5"
+                  <div className="flex items-center gap-3 py-2.5">
+                    <span className="font-orbitron text-xs font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
                       style={{ background: `${meta.color}1a`, border: `1px solid ${meta.color}44`, color: meta.color }}>
                       V1
                     </span>
                     <p className="text-gray-400 text-sm leading-relaxed italic flex-1 min-w-0 break-words">
                       &ldquo;{v1Label}&rdquo;
                     </p>
-                    {/* V1 is active only if there are no subsequent versions */}
-                    {versions.length === 0 && (
+                    {/* V1 is active when activeVersionId is null (no versions promoted) */}
+                    {activeVersionId === null ? (
                       <span className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded-full flex-shrink-0"
                         style={{ background: "#22c55e11", border: "1px solid #22c55e55", color: "#22c55e" }}>
                         ● ACTIVE
                       </span>
+                    ) : isOwner && versions.length > 0 && (
+                      <button
+                        onClick={async () => {
+                          setSettingActiveId("v1");
+                          try {
+                            // Setting activeVersionId to null restores V1 as active
+                            const res = await fetch(`/api/scenarios/${scenario.id}/versions/v1`, { method: "PATCH" });
+                            if (res.ok) setActiveVersionId(null);
+                          } finally {
+                            setSettingActiveId(null);
+                          }
+                        }}
+                        disabled={settingActiveId === "v1"}
+                        className="font-orbitron text-[10px] tracking-widest px-2 py-1 rounded flex-shrink-0 transition disabled:opacity-40"
+                        style={{ background: `${meta.color}22`, border: `1px solid ${meta.color}66`, color: meta.color }}>
+                        {settingActiveId === "v1" ? "…" : "SET ACTIVE"}
+                      </button>
                     )}
                   </div>
 
@@ -605,81 +631,104 @@ function ModifyModal({
               {isOwner && (
                 <div className="border-t pt-5" style={{ borderColor: "#1e2a4a" }}>
 
-                  {/* Mode toggle */}
-                  <div className="flex items-center gap-2 mb-4">
-                    {([
-                      { id: "codeModify", label: "CODE MODIFY", cost: costs.codeModify, desc: "Surgical edit — sends existing code + your instruction" },
-                      { id: "regenerate", label: "REGENERATE",  cost: costs.regenerate, desc: "Fresh build — re-runs all prompts, discards existing code" },
-                    ] as { id: ModifyMode; label: string; cost: number; desc: string }[]).map(m => (
-                      <button key={m.id} type="button"
-                        onClick={() => { setModifyMode(m.id); setModifyError(""); }}
-                        className="flex-1 py-2 px-3 rounded-lg font-orbitron text-[10px] tracking-widest transition text-center"
-                        style={modifyMode === m.id
-                          ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
-                          : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Mode description */}
-                  <p className="text-gray-600 text-xs mb-3">
-                    {modifyMode === "codeModify"
-                      ? "Sends the existing game code plus your instruction. Best for targeted changes like colors, rules tweaks, or adding a feature."
-                      : "Discards the current code and regenerates from scratch using all prompts. Use when the game is broken or fundamentally wrong."}
-                  </p>
-
-                  {/* Prompt textarea — disabled for regenerate */}
-                  <textarea
-                    rows={3}
-                    value={modifyMode === "regenerate" ? "" : modifyPrompt}
-                    onChange={e => setModifyPrompt(e.target.value)}
-                    disabled={modifyMode === "regenerate"}
-                    placeholder={modifyMode === "regenerate"
-                      ? "No prompt needed — regenerates from existing prompts…"
-                      : "Describe what to change about this game…"}
-                    className="w-full resize-y mb-2"
-                    style={{
-                      ...inputStyle,
-                      opacity: modifyMode === "regenerate" ? 0.4 : 1,
-                      cursor: modifyMode === "regenerate" ? "not-allowed" : "auto",
-                    }}
-                  />
-
-                  {modifySuccess && (
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg mb-3"
-                      style={{ background: "#22c55e11", border: "1px solid #22c55e44" }}>
-                      <span className="text-lg">✅</span>
-                      <span className="font-orbitron text-xs tracking-widest text-green-400">
-                        DONE! New version is live — click PLAY to try it.
-                      </span>
+                  {/* Mode selector — only tactical games have a manual editor */}
+                  {isTactical && (
+                    <div className="flex items-center gap-2 mb-3">
+                      {([
+                        { id: "prompt",  label: "MODIFY BY PROMPT" },
+                        { id: "manual",  label: "MODIFY MANUALLY"  },
+                      ] as { id: ModifyMode; label: string }[]).map(m => (
+                        <button key={m.id} type="button"
+                          onClick={() => { setModifyMode(m.id); setModifyError(""); }}
+                          className="flex-1 py-2 px-3 rounded-lg font-orbitron text-[10px] tracking-widest transition text-center"
+                          style={modifyMode === m.id
+                            ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
+                            : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
+                          {m.label}
+                        </button>
+                      ))}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-3">
-                    {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
-                    {/* Free fix — shown on regenerate tab only, if not yet used */}
-                    {modifyMode === "regenerate" && !scenario.freeFixUsed && (
+                  {modifyMode === "prompt" ? (
+                    <>
+                      {/* Explanation */}
+                      <p className="text-gray-600 text-xs mb-3 leading-relaxed">
+                        <span className="text-gray-400 font-semibold">Regenerate</span> — re-runs the original prompts from scratch. Best when the game is broken or fundamentally wrong.{" "}
+                        {!scenario.freeFixUsed
+                          ? <>Your first regenerate is <span className="text-green-400 font-semibold">free</span>; subsequent ones cost 1 credit.</>
+                          : <>Costs <span className="text-gray-400 font-semibold">1 credit</span> (your free regenerate has been used).</>
+                        }{" "}
+                        <span className="text-gray-400 font-semibold">Modify (1 credit)</span> — sends the existing game plus your instruction to AI. Best for targeted tweaks like rules, colors, or new features.
+                      </p>
+
+                      {/* Prompt textarea */}
+                      <textarea
+                        rows={3}
+                        value={modifyPrompt}
+                        onChange={e => setModifyPrompt(e.target.value)}
+                        placeholder="Describe what to change… (required for Modify, optional for Regenerate)"
+                        className="w-full resize-y mb-2"
+                        style={inputStyle}
+                      />
+
+                      {modifySuccess && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg mb-3"
+                          style={{ background: "#22c55e11", border: "1px solid #22c55e44" }}>
+                          <span className="text-lg">✅</span>
+                          <span className="font-orbitron text-xs tracking-widest text-green-400">
+                            DONE! New version is live — click PLAY to try it.
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-3">
+                        {modifyError && <span className="text-red-400 text-xs flex-1">{modifyError}</span>}
+
+                        {/* Regenerate — free (uses freefix if available, else costs 1cr) */}
+                        {!scenario.freeFixUsed ? (
+                          <button
+                            onClick={handleFreeFix}
+                            disabled={working}
+                            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
+                            style={{ background: "#16213022", border: "1px solid #22c55e66", color: "#22c55e", minHeight: "44px" }}>
+                            {working ? "…" : "🔄 REGENERATE — FREE"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleRegenerate}
+                            disabled={working}
+                            className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
+                            style={{ background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280", minHeight: "44px" }}>
+                            {working ? "…" : "🔄 REGENERATE — 1 CR"}
+                          </button>
+                        )}
+
+                        {/* Modify — always 1 credit, requires prompt */}
+                        <button
+                          onClick={handleCodeModify}
+                          disabled={working || !modifyPrompt.trim()}
+                          className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color, minHeight: "44px" }}>
+                          {working ? "FORGING…" : "✏️ MODIFY — 1 CR"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* Manual mode — just navigate */
+                    <div className="text-center py-4">
+                      <p className="text-gray-600 text-xs mb-4 leading-relaxed">
+                        Opens the scenario editor so you can directly paint terrain, place units,
+                        and adjust objectives — no AI involved, no credit cost.
+                      </p>
                       <button
-                        onClick={handleFreeFix}
-                        disabled={working}
-                        className="font-orbitron text-xs tracking-widest px-4 py-2 rounded-lg transition disabled:opacity-40"
-                        style={{ background: "#16213022", border: "1px solid #22c55e66", color: "#22c55e", minHeight: "44px" }}>
-                        🔧 FIX IT — FREE
+                        onClick={handleEditManually}
+                        className="font-orbitron text-xs tracking-widest px-6 py-3 rounded-lg transition hover:opacity-80"
+                        style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color, minHeight: "44px" }}>
+                        🗺️ OPEN EDITOR
                       </button>
-                    )}
-                    <button
-                      onClick={modifyMode === "codeModify" ? handleCodeModify : handleRegenerate}
-                      disabled={working || (modifyMode === "codeModify" && !modifyPrompt.trim())}
-                      className="font-orbitron text-xs tracking-widest px-5 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }}>
-                      {working
-                        ? "FORGING…"
-                        : modifyMode === "codeModify"
-                          ? `CODE MODIFY`
-                          : `REGENERATE`}
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1005,7 +1054,7 @@ function BuyCard({
             disabled={busy !== null}
             className="w-full font-orbitron text-[10px] tracking-widest py-2.5 rounded-lg transition hover:opacity-90 disabled:opacity-40"
             style={{ minHeight: "44px", background: "transparent", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-            {busy === "buy-clone" ? "…" : s.priceToClone > 0 ? `⬇ CLONE — ${s.priceToClone} CREDITS` : "⬇ CLONE — FREE"}
+            {busy === "buy-clone" ? "…" : `⬇ CLONE — ${Math.max(s.priceToClone, 1)} CREDIT${Math.max(s.priceToClone, 1) !== 1 ? "S" : ""}`}
           </button>
         )}
       </div>

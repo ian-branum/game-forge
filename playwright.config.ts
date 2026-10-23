@@ -66,9 +66,17 @@ export default defineConfig({
       testMatch: "**/auth.setup.ts",
     },
 
+    /* ── Empty-state setup: log in as a user with no games ── */
+    {
+      name: "setup-empty",
+      testMatch: "**/auth.setup.empty.ts",
+    },
+
     /* ── Chromium (primary) — authenticated ── */
     {
       name: "chromium",
+      // play-tab.spec.ts is owned by chromium-empty (requires a no-games account)
+      testIgnore: "**/smoke/play-tab.spec.ts",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -85,6 +93,17 @@ export default defineConfig({
     //   },
     //   dependencies: ["setup"],
     // },
+
+    /* ── Chromium (empty-state user) — no games in account ── */
+    {
+      name: "chromium-empty",
+      testMatch: "**/smoke/play-tab.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/empty-user.json",
+      },
+      dependencies: ["setup-empty"],
+    },
 
     /* ── Mobile Chrome — unauthenticated (landing + login only) ── */
     {

@@ -25,17 +25,52 @@ function hexDist(a: Pos, b: Pos): number {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Two independent d6, summed — a 2–12 bell curve centred on 7. */
+function roll2D6(): number {
+  return Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+}
+
+/**
+ * Squads (rifle + assault) can be broken and recover; teams (mg, mortar,
+ * leader, vehicle) are too small to absorb losses and break → eliminated.
+ */
+function isSquad(unit: Unit): boolean {
+  return unit.type === "infantry" || unit.type === "assault";
+}
+
+type FireResult = "suppressed" | "broken" | "eliminated";
+
+/**
+ * Map a roll outcome onto the target's new status, depending on unit class.
+ * Squads degrade in steps; teams collapse when they would break.
+ */
+function applyResult(unit: Unit, result: FireResult): Unit["status"] {
+  if (result === "eliminated") return "eliminated";
+
+  if (isSquad(unit)) {
+    if (result === "broken") {
+      return unit.status === "broken" ? "eliminated" : "broken";
+    }
+    // suppressed result
+    return unit.status === "suppressed" || unit.status === "broken" ? "broken" : "suppressed";
+  }
+
+  // team
+  if (result === "broken") return "eliminated";
+  // suppressed result
+  return "suppressed";
+}
+
 function terrainDefenseBonus(map: GameMap, pos: Pos): number {
   const tile = map[pos.row]?.[pos.col];
   if (!tile) return 0;
   switch (tile.terrain) {
     case "open":       return 0;
     case "road":       return 0;
-    case "wall":       return 1;
-    case "rubble":     return 1;
     case "wheatfield": return 1;
-    case "woods":      return 2;
-    case "building":   return 3;
+    case "rubble":     return 2;
+    case "woods":      return 3;
+    case "building":   return 4;
     default:           return 0;
   }
 }
@@ -44,7 +79,6 @@ function terrainMoveCost(terrain: string): number {
   switch (terrain) {
     case "road":       return 0.5;
     case "open":       return 1;
-    case "wall":       return 1;
     case "wheatfield": return 1;
     case "woods":      return 2;
     case "building":   return 2;
@@ -329,6 +363,20 @@ export function getAttackableTargets(state: GameState, attackerId: string): Unit
   return state.units.filter((u) => {
     if (u.faction === attacker.faction) return false;
     if (u.status === "eliminated") return false;
+
+    // A leader stacked with any other friendly unit can't be singled out.
+    if (u.type === "leader") {
+      const sharedHex = state.units.some(
+        other =>
+          other.id !== u.id &&
+          other.faction === u.faction &&
+          other.status !== "eliminated" &&
+          other.pos.row === u.pos.row &&
+          other.pos.col === u.pos.col
+      );
+      if (sharedHex) return false;
+    }
+
     const dist = hexDist(attacker.pos, u.pos);
     if (dist > attacker.range) return false;
     return hasLOS(state.map, attacker.pos, u.pos);
@@ -376,30 +424,37 @@ export function fireUnit(state: GameState, attackerId: string, targetId: string)
   // Leader bonus
   const leaderBonus = hasLeaderBonus(s, att, 1);
 
-  const roll = Math.random() * 10 + att.attack + leaderBonus;
+  const roll = roll2D6();
+  const assaultBonus = att.type === "assault" && dist === 1 ? 2 : 0;
   const defenseValue =
     tgt.defense +
     terrainDefenseBonus(s.map, tgt.pos) +
     (tgt.status === "suppressed" ? -1 : 0);
+  const net = roll + att.attack + leaderBonus + assaultBonus - defenseValue;
 
   att.hasFired = true;
 
   let result: string;
-  if (roll > defenseValue + 4) {
-    tgt.status = "eliminated";
+  let outcome: FireResult | null = null;
+  if (net >= 8) {
+    outcome = "eliminated";
     result = "ELIMINATED";
-  } else if (roll > defenseValue + 2) {
-    tgt.status = "broken";
-    tgt.morale = Math.min(tgt.morale, 2);
+  } else if (net >= 5) {
+    outcome = "broken";
     result = "BROKEN";
-  } else if (roll > defenseValue) {
-    tgt.status = "suppressed";
+  } else if (net >= 2) {
+    outcome = "suppressed";
     result = "SUPPRESSED";
   } else {
     result = "MISS";
   }
 
-  const logEntry = `${att.name} fires at ${tgt.name} → ${result}`;
+  if (outcome) {
+    tgt.status = applyResult(tgt, outcome);
+    if (outcome === "broken") tgt.morale = Math.min(tgt.morale, 2);
+  }
+
+  const logEntry = `${att.name} fires at ${tgt.name} → ${result} (net ${net})`;
   return { ...s, log: [logEntry, ...s.log] };
 }
 
@@ -424,22 +479,29 @@ export function rallyUnit(state: GameState, unitId: string): GameState {
   const s = deepCloneState(state);
   const u = s.units.find((u) => u.id === unitId)!;
 
+  // Teams can never reach "broken", but if legacy data says otherwise, just
+  // reset them to suppressed rather than running the squad rally roll.
+  if (!isSquad(u) && u.status === "broken") {
+    u.status = "suppressed";
+    return { ...s, log: [`${u.name} reorganizes`, ...s.log] };
+  }
+
   if (u.status === "suppressed") {
     u.status = "normal";
     return { ...s, log: [`${u.name} rallies to normal`, ...s.log] };
   }
 
-  // Broken: roll needed
+  // Broken: roll needed — 2D6 keeps rally on the same bell curve as fire.
   const leaderBonus = hasLeaderBonus(s, u, 2);
-  const roll = Math.random() * 10 + leaderBonus;
-  const threshold = 10 - u.morale;
+  const roll = roll2D6() + leaderBonus;
+  const threshold = 12 - u.morale;
 
   if (roll > threshold) {
     u.status = "normal";
     u.morale = Math.min(u.morale + 1, 10);
     return { ...s, log: [`${u.name} rallies! Status restored.`, ...s.log] };
   } else {
-    return { ...s, log: [`${u.name} fails to rally (rolled ${roll.toFixed(1)} vs ${threshold})`, ...s.log] };
+    return { ...s, log: [`${u.name} fails to rally (rolled ${roll} vs ${threshold})`, ...s.log] };
   }
 }
 

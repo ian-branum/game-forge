@@ -26,7 +26,14 @@ export async function POST(
     return NextResponse.json({ error: "You already own this game" }, { status: 400 });
   }
 
-  const price = type === "PLAY" ? scenario.priceToPlay : scenario.priceToClone;
+  const listedPrice = type === "PLAY" ? scenario.priceToPlay : scenario.priceToClone;
+
+  // Platform tax: clone always costs at least 1 credit (platform keeps the
+  // difference). Play purchases have no minimum — free play stays free.
+  const CLONE_TAX = 1;
+  const buyerPays  = type === "CLONE" ? Math.max(listedPrice, CLONE_TAX) : listedPrice;
+  const sellerGets = listedPrice; // seller always receives what they listed
+  const platformGets = buyerPays - sellerGets; // 0 for play, ≥1 for clone
 
   const existing = await prisma.scenarioLicense.findUnique({
     where: { userId_scenarioId_type: { userId: buyerId, scenarioId: id, type } },
@@ -36,23 +43,35 @@ export async function POST(
   }
 
   const buyer = await prisma.user.findUnique({ where: { id: buyerId } });
-  if (!buyer || buyer.credits < price) {
-    return NextResponse.json({ error: "Insufficient credits", needed: price, have: buyer?.credits ?? 0 }, { status: 402 });
+  if (!buyer || buyer.credits < buyerPays) {
+    return NextResponse.json({ error: "Insufficient credits", needed: buyerPays, have: buyer?.credits ?? 0 }, { status: 402 });
   }
 
   const sellerId = scenario.userId;
 
+  // Find the platform account (user with email "platform@game-forge.ai") if it
+  // exists — used to log the tax credit. Silently skipped if not configured.
+  const platformUser = platformGets > 0
+    ? await prisma.user.findFirst({ where: { email: "platform@game-forge.ai" } })
+    : null;
+
   await prisma.$transaction([
-    prisma.user.update({ where: { id: buyerId }, data: { credits: { decrement: price } } }),
-    prisma.user.update({ where: { id: sellerId }, data: { credits: { increment: price } } }),
+    prisma.user.update({ where: { id: buyerId }, data: { credits: { decrement: buyerPays } } }),
+    prisma.user.update({ where: { id: sellerId }, data: { credits: { increment: sellerGets } } }),
+    ...(platformUser && platformGets > 0 ? [
+      prisma.user.update({ where: { id: platformUser.id }, data: { credits: { increment: platformGets } } }),
+      prisma.creditTransaction.create({
+        data: { userId: platformUser.id, amount: platformGets, reason: "platform_tax" },
+      }),
+    ] : []),
     prisma.scenarioLicense.create({
-      data: { userId: buyerId, scenarioId: id, type, amount: price },
+      data: { userId: buyerId, scenarioId: id, type, amount: buyerPays },
     }),
     prisma.creditTransaction.create({
-      data: { userId: buyerId, amount: -price, reason: type === "PLAY" ? "play_purchase" : "clone_purchase" },
+      data: { userId: buyerId, amount: -buyerPays, reason: type === "PLAY" ? "play_purchase" : "clone_purchase" },
     }),
     prisma.creditTransaction.create({
-      data: { userId: sellerId, amount: price, reason: "sale" },
+      data: { userId: sellerId, amount: sellerGets, reason: "sale" },
     }),
   ]);
 

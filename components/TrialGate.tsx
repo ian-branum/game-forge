@@ -151,7 +151,7 @@ export default function TrialGate({
             disabled={busy !== null}
             className="w-full font-orbitron text-xs tracking-widest py-3 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
             style={{ minHeight: "44px", background: "transparent", border: "1px solid #1e2a4a", color: "#9ca3af" }}>
-            {busy === "clone" ? "PLEASE WAIT..." : info.priceToClone > 0 ? `🔀 CLONE — ${info.priceToClone} CREDITS` : "🔀 CLONE — FREE"}
+            {busy === "clone" ? "PLEASE WAIT..." : `🔀 CLONE — ${Math.max(info.priceToClone, 1)} CREDIT${Math.max(info.priceToClone, 1) !== 1 ? "S" : ""}`}
           </button>
         </div>
 
