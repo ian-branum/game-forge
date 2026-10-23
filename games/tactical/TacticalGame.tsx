@@ -514,11 +514,20 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     if (!gameState) return;
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
-    // The map scales with its column, so convert client px → viewBox units.
-    const vbWidth = svg.viewBox.baseVal.width || 1;
-    const scale = rect.width / vbWidth;
-    const px = (e.clientX - rect.left) / scale;
-    const py = (e.clientY - rect.top) / scale;
+    // The map uses xMidYMid meet, so scale is determined by whichever
+    // dimension is the tighter constraint. Compute both and pick the smaller.
+    const vbWidth  = svg.viewBox.baseVal.width  || 1;
+    const vbHeight = svg.viewBox.baseVal.height || 1;
+    const scaleX = rect.width  / vbWidth;
+    const scaleY = rect.height / vbHeight;
+    const scale  = Math.min(scaleX, scaleY);
+    // The rendered map is centered, so offset by any letterbox padding.
+    const renderedW = vbWidth  * scale;
+    const renderedH = vbHeight * scale;
+    const offsetX = (rect.width  - renderedW) / 2;
+    const offsetY = (rect.height - renderedH) / 2;
+    const px = (e.clientX - rect.left - offsetX) / scale;
+    const py = (e.clientY - rect.top  - offsetY) / scale;
     const rows = gameState.map.length;
     const cols = gameState.map[0]?.length ?? 0;
     const hex = pixelToHex(px, py, rows, cols);
@@ -781,8 +790,9 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Hex map ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-auto p-2 flex items-center justify-center">
-          <div style={{ position: "relative", width: "100%", maxWidth: SVG_W * 1.6 }}>
+        <div className="flex-1 relative min-w-0 min-h-0">
+          <div className="absolute inset-0 p-2 flex items-center justify-center overflow-hidden">
+          <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <canvas
             ref={tracerCanvas}
             width={SVG_W}
@@ -792,8 +802,9 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
           <svg
             viewBox={`0 0 ${SVG_W} ${SVG_H}`}
             width="100%"
+            height="100%"
             preserveAspectRatio="xMidYMid meet"
-            style={{ display: "block", height: "auto", cursor: "crosshair" }}
+            style={{ display: "block", cursor: "crosshair" }}
             onMouseMove={handleSVGMouseMove}
             onMouseLeave={handleSVGMouseLeave}
           >
@@ -873,6 +884,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
               )}
             </div>
           )}
+          </div>
           </div>
         </div>
 
