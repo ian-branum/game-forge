@@ -16,14 +16,14 @@ test.describe("Forge a Game — page structure", () => {
     // Games & Puzzles and WW2 Tactical selectable; Adventure coming soon
     await expect(page.getByText(/games & puzzles/i)).toBeVisible();
     await expect(page.getByText(/ww2 tactical/i)).toBeVisible();
-    await expect(page.getByText(/adventure/i)).toBeVisible();
+    await expect(page.getByText(/adventure/i).first()).toBeVisible();
   });
 
   test("FG-04 credit count is visible on the Forge page", async ({ page }) => {
-    // Credits shown in header or below the form
-    const creditsVisible =
-      (await page.getByText(/credits?/i).count()) > 0;
-    expect(creditsVisible).toBe(true);
+    // Credits shown below the form as "⚡ N credits remaining"
+    await expect(
+      page.getByText(/credits remaining/i)
+    ).toBeVisible({ timeout: 8_000 });
   });
 
   test("FG-02 Forge Game button is present", async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe("Forge a Game — header nav", () => {
   test("DB-05 Forge button in header navigates to /forge", async ({ page }) => {
     await page.goto("/dashboard");
     await page.waitForSelector("text=PLAY", { timeout: 10_000 });
-    await page.getByRole("button", { name: /^forge$/i }).click();
+    await page.locator('a[href="/forge"]').click();
     await page.waitForURL("**/forge", { timeout: 8_000 });
     await expect(page).toHaveURL(/\/forge/);
   });
