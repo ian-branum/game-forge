@@ -682,6 +682,20 @@ export default function ScenarioEditor({
         {/* ── LEFT: palette ────────────────────────────────────────────── */}
         <aside className="w-52 flex-shrink-0 bg-gray-900/60 border-r border-gray-800 p-3 overflow-y-auto">
           <div className={editing ? "" : "pointer-events-none opacity-40"}>
+            {/* ── Select / pointer tool ──────────────────────────────── */}
+            <ToolButton
+              active={selectedTool === null}
+              onClick={() => selectTool(null)}
+            >
+              {/* Arrow cursor SVG */}
+              <svg width="12" height="14" viewBox="0 0 12 14" className="flex-shrink-0">
+                <polygon points="0,0 0,12 3.5,8.5 6.5,14 8,13.2 5,7.5 9.5,7.5" fill="currentColor" />
+              </svg>
+              Select
+            </ToolButton>
+
+            <div className="my-2 border-t border-gray-800" />
+
             <SectionTitle action={<ClearAllButton onClick={clearTerrain} />}>
               TERRAIN
             </SectionTitle>
