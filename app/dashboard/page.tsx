@@ -654,10 +654,12 @@ function ModifyModal({
                     <>
                       {/* Explanation */}
                       <p className="text-gray-600 text-xs mb-3 leading-relaxed">
-                        <span className="text-gray-400 font-semibold">Regenerate (free)</span> — re-runs the original prompts from scratch.
-                        Best when the game is broken or fundamentally wrong.{" "}
-                        <span className="text-gray-400 font-semibold">Modify (1 credit)</span> — sends the existing game plus your instruction to AI.
-                        Best for targeted tweaks like rules, colors, or new features.
+                        <span className="text-gray-400 font-semibold">Regenerate</span> — re-runs the original prompts from scratch. Best when the game is broken or fundamentally wrong.{" "}
+                        {!scenario.freeFixUsed
+                          ? <>Your first regenerate is <span className="text-green-400 font-semibold">free</span>; subsequent ones cost 1 credit.</>
+                          : <>Costs <span className="text-gray-400 font-semibold">1 credit</span> (your free regenerate has been used).</>
+                        }{" "}
+                        <span className="text-gray-400 font-semibold">Modify (1 credit)</span> — sends the existing game plus your instruction to AI. Best for targeted tweaks like rules, colors, or new features.
                       </p>
 
                       {/* Prompt textarea */}
