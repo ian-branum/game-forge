@@ -76,6 +76,17 @@ export async function PATCH(
   if (scenario.userId !== session.user.id)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Special sentinel "v1": restore the original scenario payload (no version)
+  if (versionId === "v1") {
+    // The V1 payload is the scenario's own `payload` column (set at forge time).
+    // We just clear activeVersionId — no payload swap needed since payload IS V1.
+    await prisma.scenario.update({
+      where: { id },
+      data: { activeVersionId: null },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   // Verify the version belongs to this scenario
   const version = await prisma.gameVersion.findUnique({ where: { id: versionId } });
   if (!version || version.scenarioId !== id)
