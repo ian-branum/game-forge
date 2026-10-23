@@ -123,6 +123,7 @@ function ModifyModal({
   const router = useRouter();
   const meta = CATEGORY_META[scenario.category] ?? CATEGORY_META.sandbox;
   const isOwner = scenario.userId === currentUserId;
+  const isTactical = scenario.category === "tactical";
 
   const [modalTab, setModalTab] = useState<ModalTab>("modify");
   const [modifyMode, setModifyMode] = useState<ModifyMode>("prompt");
@@ -630,22 +631,24 @@ function ModifyModal({
               {isOwner && (
                 <div className="border-t pt-5" style={{ borderColor: "#1e2a4a" }}>
 
-                  {/* Mode selector */}
-                  <div className="flex items-center gap-2 mb-3">
-                    {([
-                      { id: "prompt",  label: "MODIFY BY PROMPT" },
-                      { id: "manual",  label: "MODIFY MANUALLY"  },
-                    ] as { id: ModifyMode; label: string }[]).map(m => (
-                      <button key={m.id} type="button"
-                        onClick={() => { setModifyMode(m.id); setModifyError(""); }}
-                        className="flex-1 py-2 px-3 rounded-lg font-orbitron text-[10px] tracking-widest transition text-center"
-                        style={modifyMode === m.id
-                          ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
-                          : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Mode selector — only tactical games have a manual editor */}
+                  {isTactical && (
+                    <div className="flex items-center gap-2 mb-3">
+                      {([
+                        { id: "prompt",  label: "MODIFY BY PROMPT" },
+                        { id: "manual",  label: "MODIFY MANUALLY"  },
+                      ] as { id: ModifyMode; label: string }[]).map(m => (
+                        <button key={m.id} type="button"
+                          onClick={() => { setModifyMode(m.id); setModifyError(""); }}
+                          className="flex-1 py-2 px-3 rounded-lg font-orbitron text-[10px] tracking-widest transition text-center"
+                          style={modifyMode === m.id
+                            ? { background: `${meta.color}22`, border: `2px solid ${meta.color}66`, color: meta.color }
+                            : { background: "transparent", border: "1px solid #1e2a4a", color: "#6b7280" }}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {modifyMode === "prompt" ? (
                     <>
