@@ -677,10 +677,10 @@ export default function ScenarioEditor({
   const stackUnits = stackPicker ? unitsAt(stackPicker.row, stackPicker.col) : [];
 
   return (
-    <div className="flex flex-col" style={{ background: "#05071a" }}>
-      <div className="flex items-stretch">
+    <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 56px)", background: "#05071a" }}>
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* ── LEFT: palette ────────────────────────────────────────────── */}
-        <aside className="w-52 flex-shrink-0 bg-gray-900/60 border-r border-gray-800 p-3">
+        <aside className="w-52 flex-shrink-0 bg-gray-900/60 border-r border-gray-800 p-3 overflow-y-auto">
           <div className={editing ? "" : "pointer-events-none opacity-40"}>
             <SectionTitle action={<ClearAllButton onClick={clearTerrain} />}>
               TERRAIN
@@ -934,7 +934,7 @@ export default function ScenarioEditor({
         </main>
 
         {/* ── RIGHT: inventory ─────────────────────────────────────────── */}
-        <aside className="w-60 flex-shrink-0 self-stretch bg-gray-900/60 border-l border-gray-800 p-3">
+        <aside className="w-60 flex-shrink-0 bg-gray-900/60 border-l border-gray-800 p-3 overflow-y-auto">
           <SectionTitle>ALLIED</SectionTitle>
           {alliedUnits.length === 0 && (
             <p className="text-[11px] text-gray-600 px-2">No allied units.</p>

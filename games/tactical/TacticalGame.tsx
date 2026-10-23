@@ -724,7 +724,7 @@ export default function TacticalGame({ scenario }: TacticalGameProps) {
     objectives.find(o => o.pos.row === r && o.pos.col === c);
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: "#05071a", color: "#e2e8f0" }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 56px)", background: "#05071a", color: "#e2e8f0" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-2 border-b"
