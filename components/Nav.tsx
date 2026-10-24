@@ -96,26 +96,29 @@ export default function Nav() {
   return (
     <>
       <nav className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
-        style={{ borderColor: "#1e2a4a", background: "#070d20", height: "56px" }}>
+        style={{ borderColor: "#1e2a4a", background: "#070d20", minHeight: "56px" }}>
 
-        <Link
-          href={session ? "/dashboard" : "/"}
-          className="font-orbitron font-black text-sm tracking-widest transition hover:opacity-80"
-          style={{ color: "#4488ff" }}>
-          GAME FORGE
-        </Link>
+        <div className="flex flex-col items-start gap-0.5">
+          <Link
+            href={session ? "/dashboard" : "/"}
+            className="font-orbitron font-black text-sm tracking-widest transition hover:opacity-80"
+            style={{ color: "#4488ff" }}>
+            GAME FORGE
+          </Link>
+          {isPlay && (
+            <button
+              onClick={() => router.back()}
+              className="text-[10px] px-2 py-0.5 rounded font-orbitron font-bold transition hover:opacity-80"
+              style={{ background: "#1e2a4a44", border: "1px solid #1e2a4a", color: "#94a3b8" }}>
+              ← BACK
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-4">
           {session ? (
             <>
-              {isPlay ? (
-                <button
-                  onClick={() => router.back()}
-                  className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
-                  style={{ background: "#1e2a4a44", border: "1px solid #1e2a4a", color: "#94a3b8" }}>
-                  ← BACK
-                </button>
-              ) : (
+              {!isPlay && (
                 <Link href="/forge"
                   className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
                   style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: "#4488ff" }}>
