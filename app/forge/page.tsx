@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 
@@ -37,6 +37,20 @@ export default function ForgePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; detail?: string } | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    const load = () => {
+      fetch("/api/me/credits")
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data?.credits !== undefined) setCredits(data.credits); })
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener("gf:credits", load);
+    return () => window.removeEventListener("gf:credits", load);
+  }, [session]);
 
   const selectedCategory = CATEGORIES.find(c => c.id === category)!;
 
@@ -192,7 +206,7 @@ export default function ForgePage() {
           )}
           <p className="text-gray-600 text-xs mt-3 text-center">
             {session
-              ? `⚡ ${(session.user as { credits?: number }).credits ?? "?"} credits remaining`
+              ? `⚡ ${credits ?? "?"} credits remaining`
               : "Sign in to forge games"}
           </p>
         </div>
