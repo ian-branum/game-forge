@@ -24,7 +24,17 @@ GAME REQUIREMENTS:
 - Fully playable: win/lose/draw detection, restart, score display.
 - AI/computer opponent where applicable (minimax for simple games, heuristic for complex).
 - Touch-friendly (tap targets ≥ 44px on mobile).
-- Include a <title> tag with the game name and a <meta name="description"> tag.`;
+- Include a <title> tag with the game name and a <meta name="description"> tag.
+
+INTERACTIVITY — THIS IS THE MOST IMPORTANT SECTION. READ CAREFULLY:
+- ALL JavaScript must be wrapped in a DOMContentLoaded listener OR placed at the bottom of <body> AFTER all HTML elements it references. Never reference a DOM element before it exists.
+- ALL buttons must have working onclick handlers wired up in JavaScript — never leave a button without an event listener.
+- For canvas-based games: attach click/touch event listeners to the canvas element itself after it is rendered. Confirm the canvas variable is non-null before calling getContext().
+- For grid/DOM-based games: use event delegation or attach listeners to each cell after the grid is built.
+- Piece movement (chess, checkers, etc.): implement a two-click select-then-move pattern — first click selects a piece and highlights valid moves, second click on a valid destination moves it. Highlight selected piece visually.
+- Start/New Game buttons: must call an init() or startGame() function that resets ALL state variables and re-renders the board. Test that clicking it from any game state works.
+- Never use innerHTML event attributes (onclick="...") on dynamically created elements; always use addEventListener.
+- Before outputting, mentally trace: user clicks X → handler fires → state updates → board re-renders. If any link in that chain is broken, fix it.`;
 
 
 const MODEL = "deepseek-v4-flash";
@@ -107,7 +117,7 @@ async function fetchRawHtml(userMessage: string): Promise<string> {
       // NOTE: no response_format — the output is raw HTML, not JSON.
       temperature: TEMPERATURE,
       max_tokens: MAX_TOKENS,
-      reasoning_effort: "none",
+      reasoning_effort: "low",
     }),
   });
 
