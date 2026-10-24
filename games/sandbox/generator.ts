@@ -117,7 +117,7 @@ async function fetchRawHtml(userMessage: string): Promise<string> {
       // NOTE: no response_format — the output is raw HTML, not JSON.
       temperature: TEMPERATURE,
       max_tokens: MAX_TOKENS,
-      reasoning_effort: "low",
+      reasoning_effort: "none",
     }),
   });
 
