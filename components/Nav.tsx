@@ -105,20 +105,19 @@ export default function Nav() {
             style={{ color: "#4488ff" }}>
             GAME FORGE
           </Link>
-          {isPlay && (
-            <button
-              onClick={() => router.back()}
-              className="text-[10px] px-2 py-0.5 rounded font-orbitron font-bold transition hover:opacity-80"
-              style={{ background: "#1e2a4a44", border: "1px solid #1e2a4a", color: "#94a3b8" }}>
-              ← BACK
-            </button>
-          )}
         </div>
 
         <div className="flex items-center gap-4">
           {session ? (
             <>
-              {!isPlay && (
+              {isPlay ? (
+                <button
+                  onClick={() => router.back()}
+                  className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
+                  style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: "#4488ff" }}>
+                  ← BACK
+                </button>
+              ) : (
                 <Link href="/forge"
                   className="text-xs px-4 py-1.5 rounded-lg font-orbitron font-bold transition hover:opacity-80"
                   style={{ background: "#4488ff22", border: "1px solid #4488ff44", color: "#4488ff" }}>
