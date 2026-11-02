@@ -5,6 +5,7 @@
  *
  * Modal selector: div.fixed.inset-0 (no role="dialog")
  * Tabs: plain <button> elements with text MODIFY / PUBLISH (no role="tab")
+ * Modify tab: one shared instruction textarea + two action buttons: REGENERATE and MODIFY — 1 CR (no mode toggles)
  * Checkboxes: unlabelled inputs next to <span> text — use locator chaining
  * Archive button: "🗄 ARCHIVE" | Restore: "↩ RESTORE" | Deep: "⛔ DEEP ARCHIVE"
  * +New Game: <Link href="/forge"> with text "+ NEW GAME"
@@ -130,7 +131,7 @@ test.describe("Archive view — Modify tab", () => {
   async function openModifyTab(page: import("@playwright/test").Page) {
     const opened = await openFirstGame(page, "archived");
     if (!opened) return false;
-    // Tab button says exactly "MODIFY" — CODE MODIFY and REGENERATE are different buttons.
+    // Tab button says exactly "MODIFY" — different from the "MODIFY — 1 CR" action button inside the tab.
     // Use first() scoped to the rounded-full tab buttons (they sit in the header flex row).
     await page.locator(MODAL).locator("button.rounded-full", { hasText: /^MODIFY$/ }).click();
     return true;
@@ -152,20 +153,21 @@ test.describe("Archive view — Modify tab", () => {
     await expect(setActiveBtn).toBeVisible();
   });
 
-  test("AR-15 CODE MODIFY and REGENERATE mode toggle buttons exist", async ({ page }) => {
+  test("AR-15 shared instruction textarea and REGENERATE / MODIFY action buttons exist", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    // Mode toggles are flex-1 rounded-lg — distinguishes them from the submit button (px-5 rounded-lg)
-    const toggles = page.locator(MODAL).locator("button.flex-1.rounded-lg");
-    await expect(toggles.filter({ hasText: "CODE MODIFY" })).toBeVisible();
-    await expect(toggles.filter({ hasText: "REGENERATE" })).toBeVisible();
+    const modal = page.locator(MODAL);
+    // Single shared instruction textarea — always visible, no mode toggles
+    await expect(page.getByRole("textbox").first()).toBeVisible();
+    // Two separate action buttons: REGENERATE (free or 1 CR) and MODIFY — 1 CR
+    await expect(modal.getByRole("button", { name: /regenerate/i })).toBeVisible();
+    await expect(modal.getByRole("button", { name: /modify.*1\s*cr/i })).toBeVisible();
   });
 
-  test("AR-16 selecting CODE MODIFY mode shows prompt textarea", async ({ page }) => {
+  test("AR-16 instruction textarea is visible without any mode selection", async ({ page }) => {
     const opened = await openModifyTab(page);
     if (!opened) { test.skip(); return; }
-    // Click the mode toggle (flex-1), not the submit button
-    await page.locator(MODAL).locator("button.flex-1.rounded-lg").filter({ hasText: "CODE MODIFY" }).click();
+    // Textarea is always present — no toggle click needed to reveal it
     await expect(page.getByRole("textbox").first()).toBeVisible();
   });
 
